@@ -11,7 +11,8 @@ import {
   Info,
   Wallet,
   MessageSquare,
-  CheckSquare
+  CheckSquare,
+  FileBox
 } from "lucide-react";
 import { OverviewPanel } from "./overview-panel";
 import { PartiesPanel } from "./parties-panel";
@@ -20,6 +21,7 @@ import { TimelinePanel } from "./timeline-panel";
 import { FinancePanel } from "./finance-panel";
 import { NotesPanel } from "./notes-panel";
 import { TasksPanel } from "./tasks-panel";
+import { DocumentsPanel, type DocumentPayload } from "./documents-panel";
 
 type MatterPayload = Prisma.MatterGetPayload<{
   include: {
@@ -103,12 +105,14 @@ export function MatterDetailTabs({
   matter,
   finance,
   userOptions,
-  notes
+  notes,
+  documents
 }: {
   matter: MatterPayload;
   finance: FinancePayload;
   userOptions: UserOption[];
   notes: NotePayload[];
+  documents: DocumentPayload[];
 }) {
   const [tab, setTab] = useState("overview");
 
@@ -152,6 +156,13 @@ export function MatterDetailTabs({
               {notes.length}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-1.5">
+            <FileBox className="h-3.5 w-3.5" />
+            材料
+            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
+              {documents.length}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="finance" className="gap-1.5">
             <Wallet className="h-3.5 w-3.5" />
             财务
@@ -181,6 +192,16 @@ export function MatterDetailTabs({
           </TabsContent>
           <TabsContent value="notes" forceMount hidden={tab !== "notes"}>
             <NotesPanel matterId={matter.id} notes={notes} />
+          </TabsContent>
+          <TabsContent value="documents" forceMount hidden={tab !== "documents"}>
+            <DocumentsPanel
+              matterId={matter.id}
+              documents={documents}
+              procedures={matter.procedures.map((p) => ({
+                id: p.id,
+                label: p.customLabel ?? p.type
+              }))}
+            />
           </TabsContent>
           <TabsContent value="finance" forceMount hidden={tab !== "finance"}>
             <FinancePanel matterId={matter.id} finance={finance} userOptions={userOptions} />
