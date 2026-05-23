@@ -1007,36 +1007,33 @@ enum ExpressDirection { OUTBOUND; INBOUND }
 | **v0.9.2**（工具箱 + 快递） | §13.4 三个计算器 + §13.6 快递追踪 + Matter 详情联动 | 5-7 commit |
 | **v0.9.3**（提醒打通） | ICS 日历导出（保全/开庭/期限）+ 通知聚合中心壳 | 3-4 commit |
 
-### 13.8 待决策点（v0.9.0 启动前需用户确认）
+### 13.8 已决策（2026-05-23 深夜）
 
-1. **短信解析是否要做"自动每天解析"**？还是只做"复制粘贴手动提交"？
-   - 自动方案：用户开放邮件转发或 SMS API（多平台都有，但配置门槛高）
-   - 手动方案：律师每天打开一次 `/inbox` 粘贴一次（每天 30 秒）
-   - **倾向手动**：律所运维成本最低，自动转发需要用户去运营商配置
+1. **短信解析** = **手动复制粘贴**（不做自动转发/SMS API 集成）。  
+   *理由：律所运维成本最低；律师每天打开 /inbox 粘贴一次（30 秒），自动转发要用户去运营商/邮件服务商配，性价比低。SMS API 留作 v1.5 评估。*
 
-2. **财产保全到期提醒是发邮件还是只在站内显示**？
-   - 站内：复用现有 Deadline 派生条目，dashboard 显示
-   - 邮件：需配 SMTP，律所部署成本上升
-   - **倾向站内**：保留邮件作为 v1.0 选项
+2. **AI provider 默认预填通义千问 + 可改 DeepSeek 等**（base_url + model 字段用户随时改）。  
+   *理由：阿里云百炼免费额度大，新用户上手最快；但 OpenAI 兼容协议本身就支持任意 provider，UI 上 4 字段（key/base_url/text_model/vision_model）独立可改即可，不需要硬绑通义。*
 
-3. **AI 默认 provider 是否帮用户预填通义千问的 base_url**？
-   - 预填：用户上手最快，但暗含"推荐通义"
-   - 留空：中立，但用户要去查 base_url
-   - **倾向预填通义**：实际部署成本最低（阿里云百炼免费额度大）
+3. **诉前保全 Matter 关联 = 可选**（startDate 阶段可空 matterId，立案后回填）。  
+   *理由：诉前保全 30 天内必须起诉，期间 Matter 可能尚未建立；强关联会逼用户先建空壳 Matter，反劝退。*
 
-4. **诉讼费计算器是否在 Matter 详情页直接显示算好的预估诉讼费**？
-   - 自动：每个案件页都显示一行"标的 X → 诉讼费约 Y"
-   - 手动：点按钮才弹计算器
-   - **倾向自动**：律师每次起诉都要算，自动显示价值大
+4. **保全到期提醒 = 站内**（dashboard 卡片 + 复用 Deadline 派生条目，不发邮件）。  
+   *理由：律所自部署不强制配 SMTP；站内提醒已能命中每日工作流。邮件留作 v1.0 选项。*  
+   *本条用户未直接回答，按 v0.9 起草人倾向走，v0.9.3 提醒打通阶段如需调整可再讨论。*
 
-5. **保全模块"诉前保全"是否要关联 Matter**？
-   - 强关联：诉前保全也必须先建 Matter（即使诉讼程序还没立）
-   - 可选：诉前可空 Matter，立案后回填
-   - **倾向可选**：诉前 30 天必须起诉，期间可能 Matter 还未创建
+5. **诉讼费在 Matter 详情自动显示** = **自动**（标的额非空时在案件头部展示"诉讼费约 ¥X"小字）。  
+   *理由：律师每次起诉都要算，自动显示价值大于占位成本。*  
+   *本条用户未直接回答，按 v0.9 起草人倾向走，v0.9.2 工具箱实施时落地，如需调整可再讨论。*
 
-### 13.9 v0.9.0 实施前置（待用户启动）
+### 13.9 v0.9.0 启动（2026-05-23 深夜）
 
-- §13.2 + §13.3 涉及新建 4 张表（SmsMessage / Preservation / PreservationRenewal / 加 4 个枚举），属 CLAUDE.md 红线"数据库 schema 变更"
-- 需用户先回答 §13.8 的 5 个决策点，然后明确指令启动
+§13.8 的 5 项决策已锁，下一步进入 v0.9.0 Phase 1：
+
+| Commit 段 | 范围 |
+|---|---|
+| **C1 schema** | SmsMessage / Preservation / PreservationRenewal 三表 + 6 枚举 + Matter/User 反向关系 + migration + DATA-MODEL.md 更新 |
+| **C2 短信解析** | `src/lib/sms-parser.ts`（正则全套）+ `src/server/sms/actions.ts`（parseAndSave/match/generateHearing/generateDeadline/markProcessed）+ `/inbox` UI + nav |
+| **C3 财产保全** | `src/server/preservations/actions.ts`（CRUD + renew + listExpiring）+ `/preservation` UI + Matter 详情 sub tab + nav + dashboard 到期预警卡 |
 
 ---

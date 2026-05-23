@@ -84,18 +84,18 @@ enum LitigationStanding {
 }
 
 enum FeeType {
-  LUMP_SUM            // 一次性
-  INSTALLMENT         // 分期支付
-  CONTINGENCY_FULL    // 风险代理：纯后付
+  LUMP_SUM // 一次性
+  INSTALLMENT // 分期支付
+  CONTINGENCY_FULL // 风险代理：纯后付
   CONTINGENCY_PARTIAL // 风险代理：部分后付
-  HOURLY              // 按小时计费
+  HOURLY // 按小时计费
 }
 
 enum InvoiceRequestStatus {
-  PENDING    // 律师已申请、待财务处理
-  APPROVED   // 财务已批准、待开票
-  ISSUED     // 已开具（含电子发票）
-  REJECTED   // 被拒
+  PENDING // 律师已申请、待财务处理
+  APPROVED // 财务已批准、待开票
+  ISSUED // 已开具（含电子发票）
+  REJECTED // 被拒
 }
 
 enum ProcedureType {
@@ -228,32 +228,32 @@ enum FeeEntryType {
 
 // v0.8: 文档模板分类
 enum TemplateCategory {
-  INTAKE         // 收案文书：收案登记表 / 风险告知书 / 质量反馈卡
-  RETAINER       // 委托文书：委托代理合同 / 授权委托书
-  LITIGATION     // 诉讼文书：起诉状 / 答辩状 / 上诉状 / 反诉状 / 仲裁申请书
-  HEARING        // 庭审文书：谈话笔录 / 庭审笔录 / 阅卷笔录 / 询问笔录
-  WORK_PRODUCT   // 工作成果：办案小结 / 法律意见书 / 代理意见 / 律师函 / 公函
-  ARCHIVE        // 卷宗文书：卷宗封皮 / 卷宗目录 / 备考表 / 证据目录
-  CLOSING        // 结案文书：结案登记表 / 结算单
-  BLANK          // 空白文档（套律所抬头）
+  INTAKE // 收案文书：收案登记表 / 风险告知书 / 质量反馈卡
+  RETAINER // 委托文书：委托代理合同 / 授权委托书
+  LITIGATION // 诉讼文书：起诉状 / 答辩状 / 上诉状 / 反诉状 / 仲裁申请书
+  HEARING // 庭审文书：谈话笔录 / 庭审笔录 / 阅卷笔录 / 询问笔录
+  WORK_PRODUCT // 工作成果：办案小结 / 法律意见书 / 代理意见 / 律师函 / 公函
+  ARCHIVE // 卷宗文书：卷宗封皮 / 卷宗目录 / 备考表 / 证据目录
+  CLOSING // 结案文书：结案登记表 / 结算单
+  BLANK // 空白文档（套律所抬头）
 }
 
 // v0.8: 用章种类
 enum SealType {
-  OFFICIAL_SEAL         // 律师事务所公章
-  CONTRACT_SEAL         // 合同专用章
-  FINANCE_SEAL          // 财务专用章
-  LEGAL_REP_SEAL        // 法定代表人章
-  CONTRACT_REVIEW_SEAL  // 合同审核章
+  OFFICIAL_SEAL // 律师事务所公章
+  CONTRACT_SEAL // 合同专用章
+  FINANCE_SEAL // 财务专用章
+  LEGAL_REP_SEAL // 法定代表人章
+  CONTRACT_REVIEW_SEAL // 合同审核章
 }
 
 // v0.8: 用章申请状态
 enum SealRequestStatus {
-  PENDING     // 待审批
-  APPROVED    // 已批准，待盖章
-  STAMPED     // 已盖章并回填扫描件（终态）
-  REJECTED    // 被驳回（终态，但可新建一条引用此 ID 重新申请）
-  CANCELLED   // 申请人主动撤销
+  PENDING // 待审批
+  APPROVED // 已批准，待盖章
+  STAMPED // 已盖章并回填扫描件（终态）
+  REJECTED // 被驳回（终态，但可新建一条引用此 ID 重新申请）
+  CANCELLED // 申请人主动撤销
 }
 
 // v0.8: 紧急程度
@@ -277,26 +277,30 @@ model User {
   active       Boolean   @default(true)
   lastLoginAt  DateTime?
 
-  ownedMatters          Matter[]         @relation("MatterOwner")
+  ownedMatters          Matter[]              @relation("MatterOwner")
   memberships           MatterMember[]
   commissionPlans       CommissionPlan[]
-  feeEntriesBeneficiary FeeEntry[]       @relation("FeeBeneficiary")
-  feeEntriesRecorded    FeeEntry[]       @relation("FeeRecorder")
-  authoredNotes         Note[]           @relation("NoteAuthor")
-  uploadedDocuments     Document[]       @relation("DocumentUploader")
+  feeEntriesBeneficiary FeeEntry[]            @relation("FeeBeneficiary")
+  feeEntriesRecorded    FeeEntry[]            @relation("FeeRecorder")
+  authoredNotes         Note[]                @relation("NoteAuthor")
+  uploadedDocuments     Document[]            @relation("DocumentUploader")
   auditLogs             AuditLog[]
-  conflictDecisions     ConflictCheck[]  @relation("ConflictDecidedBy")
+  conflictDecisions     ConflictCheck[]       @relation("ConflictDecidedBy")
   // v0.5
-  ownedIntakes          Intake[]         @relation("IntakeOwner")
-  invoiceRequests       InvoiceRequest[] @relation("InvoiceRequester")
-  invoiceProcessing     InvoiceRequest[] @relation("InvoiceProcessor")
+  ownedIntakes          Intake[]              @relation("IntakeOwner")
+  invoiceRequests       InvoiceRequest[]      @relation("InvoiceRequester")
+  invoiceProcessing     InvoiceRequest[]      @relation("InvoiceProcessor")
   // v0.8: 模板创建者 + 用章申请人/审批人/盖章人
-  createdTemplates      DocumentTemplate[] @relation("TemplateCreator")
-  sealRequests          SealRequest[]    @relation("SealRequester")
-  sealApprovals         SealRequest[]    @relation("SealApprover")
-  sealStamps            SealRequest[]    @relation("SealStamper")
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  createdTemplates      DocumentTemplate[]    @relation("TemplateCreator")
+  sealRequests          SealRequest[]         @relation("SealRequester")
+  sealApprovals         SealRequest[]         @relation("SealApprover")
+  sealStamps            SealRequest[]         @relation("SealStamper")
+  // v0.9: 短信收件人 / 保全负责人 / 保全续保操作人 / 快递创建人
+  receivedSmsMessages   SmsMessage[]          @relation("SmsReceiver")
+  ownedPreservations    Preservation[]        @relation("PreservationOwner")
+  preservationRenewals  PreservationRenewal[] @relation("RenewalPerformer")
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 }
 
 // ============================================================
@@ -378,50 +382,50 @@ model CauseOfAction {
 // ============================================================
 
 model Intake {
-  id             String          @id @default(cuid())
+  id             String         @id @default(cuid())
   title          String
-  category       MatterCategory  @default(CIVIL_COMMERCIAL)
+  category       MatterCategory @default(CIVIL_COMMERCIAL)
   causeId        String?
-  cause          CauseOfAction?  @relation(fields: [causeId], references: [id])
+  cause          CauseOfAction? @relation(fields: [causeId], references: [id])
   causeFreeText  String?
   description    String?
-  status         IntakeStatus    @default(INTAKE)
-  receivedAt     DateTime        @default(now())
+  status         IntakeStatus   @default(INTAKE)
+  receivedAt     DateTime       @default(now())
   declinedReason String?
 
   // v0.5: 客户 + 联系人
-  clientId       String?
-  client         Client?         @relation(fields: [clientId], references: [id])
-  clientType     ClientType?     // 提交时自动建档用，转化后随 Client 表
-  contactName    String?
-  contactPhone   String?
+  clientId     String?
+  client       Client?     @relation(fields: [clientId], references: [id])
+  clientType   ClientType? // 提交时自动建档用，转化后随 Client 表
+  contactName  String?
+  contactPhone String?
 
   // v0.5: 程序 + 诉讼地位 + 争议解决机构 + 标的
   firstProcedureType ProcedureType?
-  firstAgency        String?            // 法院/仲裁机构/侦查机关 名称
+  firstAgency        String? // 法院/仲裁机构/侦查机关 名称
   ourStanding        LitigationStanding?
-  claimAmount        Decimal?           @db.Decimal(14, 2)
-  claimDescription   String?            // 非金钱标的描述
+  claimAmount        Decimal?            @db.Decimal(14, 2)
+  claimDescription   String? // 非金钱标的描述
 
   // v0.5: 律师费
-  feeType      FeeType?
-  feeAmount    Decimal? @db.Decimal(14, 2)
-  feeSchedule  String?  // 分期 / 后付节点 自由文本
-  feeNote      String?
+  feeType     FeeType?
+  feeAmount   Decimal? @db.Decimal(14, 2)
+  feeSchedule String? // 分期 / 后付节点 自由文本
+  feeNote     String?
 
   // v0.5: 主办律师 + 共同律师（转化时生成 MatterMember）
-  ownerUserId  String?
-  ownerUser    User?    @relation("IntakeOwner", fields: [ownerUserId], references: [id])
-  coUserIds    String[] @default([])
+  ownerUserId String?
+  ownerUser   User?    @relation("IntakeOwner", fields: [ownerUserId], references: [id])
+  coUserIds   String[] @default([])
 
   parties        Party[]
   conflictChecks ConflictCheck[]
   matter         Matter?
   documents      Document[]
 
-  createdById    String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([status, receivedAt])
   @@index([causeId])
@@ -433,58 +437,61 @@ model Intake {
 // ============================================================
 
 model Matter {
-  id                      String              @id @default(cuid())
-  internalCode            String              @unique
-  title                   String
-  category                MatterCategory      @default(CIVIL_COMMERCIAL)
-  status                  MatterStatus        @default(IN_PROGRESS)
+  id           String         @id @default(cuid())
+  internalCode String         @unique
+  title        String
+  category     MatterCategory @default(CIVIL_COMMERCIAL)
+  status       MatterStatus   @default(IN_PROGRESS)
 
-  causeId                 String?
-  cause                   CauseOfAction?      @relation(fields: [causeId], references: [id])
-  causeFreeText           String?
+  causeId       String?
+  cause         CauseOfAction? @relation(fields: [causeId], references: [id])
+  causeFreeText String?
 
-  claimAmount             Decimal?            @db.Decimal(14, 2)
+  claimAmount Decimal? @db.Decimal(14, 2)
 
   ourStanding             LitigationStanding?
   counterclaimAsPlaintiff Boolean             @default(false)
   counterclaimAsDefendant Boolean             @default(false)
 
-  intakeDate              DateTime?
+  intakeDate DateTime?
 
-  primaryClientId         String?
-  primaryClient           Client?             @relation(fields: [primaryClientId], references: [id])
-  clientLinks             MatterClient[]
+  primaryClientId String?
+  primaryClient   Client?        @relation(fields: [primaryClientId], references: [id])
+  clientLinks     MatterClient[]
 
-  ownerId                 String
-  owner                   User                @relation("MatterOwner", fields: [ownerId], references: [id])
-  members                 MatterMember[]
+  ownerId String
+  owner   User           @relation("MatterOwner", fields: [ownerId], references: [id])
+  members MatterMember[]
 
-  intakeId                String?             @unique
-  intake                  Intake?             @relation(fields: [intakeId], references: [id])
+  intakeId String? @unique
+  intake   Intake? @relation(fields: [intakeId], references: [id])
 
-  firstAcceptedAt         DateTime?
-  closedAt                DateTime?
-  archivedAt              DateTime?
+  firstAcceptedAt DateTime?
+  closedAt        DateTime?
+  archivedAt      DateTime?
 
-  procedures              MatterProcedure[]
-  parties                 Party[]
-  relatedEntities         RelatedEntity[]
-  notes                   Note[]
-  tasks                   Task[]
-  documents               Document[]
-  timelineEvents          TimelineEvent[]
-  billings                Billing[]
-  feeEntries              FeeEntry[]
-  commissionPlans         CommissionPlan[]
-  archiveRecords          ArchiveRecord[]
-  invoiceRequests         InvoiceRequest[]
+  procedures      MatterProcedure[]
+  parties         Party[]
+  relatedEntities RelatedEntity[]
+  notes           Note[]
+  tasks           Task[]
+  documents       Document[]
+  timelineEvents  TimelineEvent[]
+  billings        Billing[]
+  feeEntries      FeeEntry[]
+  commissionPlans CommissionPlan[]
+  archiveRecords  ArchiveRecord[]
+  invoiceRequests InvoiceRequest[]
   // v0.8: 卷宗 + 用章
-  folders                 DocumentFolder[]
-  sealRequests            SealRequest[]
+  folders         DocumentFolder[]
+  sealRequests    SealRequest[]
+  // v0.9: 法院短信 + 财产保全
+  smsMessages     SmsMessage[]
+  preservations   Preservation[]
 
-  deletedAt               DateTime?
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([status, updatedAt])
   @@index([ownerId])
@@ -523,34 +530,34 @@ model MatterClient {
 // ============================================================
 
 model MatterProcedure {
-  id             String              @id @default(cuid())
-  matterId       String
-  matter         Matter              @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
-  type           ProcedureType
-  customLabel    String?
-  engagement     ProcedureEngagement @default(ENGAGED)
-  order          Int
+  type        ProcedureType
+  customLabel String?
+  engagement  ProcedureEngagement @default(ENGAGED)
+  order       Int
 
   caseNumber     String?
   handlingAgency String?
   panel          String?
   handler        String?
 
-  acceptedAt     DateTime?
-  concludedAt    DateTime?
+  acceptedAt  DateTime?
+  concludedAt DateTime?
 
-  status         ProcedureStatus     @default(PENDING)
-  outcome        ProcedureOutcome?
-  outcomeNote    String?
+  status      ProcedureStatus   @default(PENDING)
+  outcome     ProcedureOutcome?
+  outcomeNote String?
 
-  stages         MatterStage[]
-  hearings       Hearing[]
-  deadlines      Deadline[]
-  documents      Document[]
+  stages    MatterStage[]
+  hearings  Hearing[]
+  deadlines Deadline[]
+  documents Document[]
 
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([matterId, order])
   @@index([matterId, order])
@@ -734,52 +741,52 @@ model Note {
 // ============================================================
 
 model Document {
-  id           String           @id @default(cuid())
+  id          String           @id @default(cuid())
   // v0.4: matterId 可空（收案阶段挂在 Intake 上），转 Matter 时回填
-  matterId     String?
-  matter       Matter?          @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  intakeId     String?
-  intake       Intake?          @relation(fields: [intakeId], references: [id], onDelete: Cascade)
-  procedureId  String?
-  procedure    MatterProcedure? @relation(fields: [procedureId], references: [id])
-  name         String
-  category     DocumentCategory @default(OTHER)
-  version      Int              @default(1)
-  isLatest     Boolean          @default(true)
-  familyId     String?
+  matterId    String?
+  matter      Matter?          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  intakeId    String?
+  intake      Intake?          @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  procedureId String?
+  procedure   MatterProcedure? @relation(fields: [procedureId], references: [id])
+  name        String
+  category    DocumentCategory @default(OTHER)
+  version     Int              @default(1)
+  isLatest    Boolean          @default(true)
+  familyId    String?
 
-  path         String
-  mimeType     String?
-  size         Int?
-  sha256       String?
+  path     String
+  mimeType String?
+  size     Int?
+  sha256   String?
 
-  encrypted    Boolean          @default(false)
-  algorithm    String?
-  iv           String?
-  authTag      String?
+  encrypted Boolean @default(false)
+  algorithm String?
+  iv        String?
+  authTag   String?
 
   tags         String[]
   uploadedById String
-  uploadedBy   User             @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  uploadedBy   User      @relation("DocumentUploader", fields: [uploadedById], references: [id])
   deletedAt    DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // v0.5: 发票工作流附件反向
   invoiceAsContract InvoiceRequest? @relation("InvoiceContractScan")
   invoiceAsFile     InvoiceRequest? @relation("InvoiceFile")
 
   // v0.8: 卷宗归属 + 模板生成
-  folderId      String?
-  folder        DocumentFolder?   @relation(fields: [folderId], references: [id])
-  templateId    String?
-  template      DocumentTemplate? @relation("TemplateGenerated", fields: [templateId], references: [id])
+  folderId                String?
+  folder                  DocumentFolder?   @relation(fields: [folderId], references: [id])
+  templateId              String?
+  template                DocumentTemplate? @relation("TemplateGenerated", fields: [templateId], references: [id])
   templateContextSnapshot Json?
   // v0.8: 反向 - 作为某模板的源 docx
-  templateBlobOf DocumentTemplate? @relation("TemplateBlob")
+  templateBlobOf          DocumentTemplate? @relation("TemplateBlob")
   // v0.8: 反向 - 作为用章申请的待盖章稿 / 盖章后扫描件
-  sealAsDraft   SealRequest?      @relation("SealDraft")
-  sealAsStamped SealRequest?      @relation("SealStamped")
+  sealAsDraft             SealRequest?      @relation("SealDraft")
+  sealAsStamped           SealRequest?      @relation("SealStamped")
 
   @@index([matterId, category])
   @@index([intakeId])
@@ -795,31 +802,31 @@ model Document {
 // ============================================================
 
 model InvoiceRequest {
-  id              String               @id @default(cuid())
-  matterId        String
-  matter          Matter               @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  amount          Decimal              @db.Decimal(14, 2)
-  title           String?              // 客户称谓 / 备注
-  status          InvoiceRequestStatus @default(PENDING)
-  requestNote     String?
+  id          String               @id @default(cuid())
+  matterId    String
+  matter      Matter               @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  amount      Decimal              @db.Decimal(14, 2)
+  title       String? // 客户称谓 / 备注
+  status      InvoiceRequestStatus @default(PENDING)
+  requestNote String?
 
-  requestedById   String
-  requestedBy     User                 @relation("InvoiceRequester", fields: [requestedById], references: [id])
-  requestedAt     DateTime             @default(now())
+  requestedById String
+  requestedBy   User     @relation("InvoiceRequester", fields: [requestedById], references: [id])
+  requestedAt   DateTime @default(now())
 
-  processedById   String?
-  processedBy     User?                @relation("InvoiceProcessor", fields: [processedById], references: [id])
-  processedAt     DateTime?
-  processNote     String?
+  processedById String?
+  processedBy   User?     @relation("InvoiceProcessor", fields: [processedById], references: [id])
+  processedAt   DateTime?
+  processNote   String?
 
   // 财务上传：扫描件合同 + 电子发票文件（均走 Document）
-  contractScanId  String?              @unique
-  contractScan    Document?            @relation("InvoiceContractScan", fields: [contractScanId], references: [id])
-  invoiceFileId   String?              @unique
-  invoiceFile     Document?            @relation("InvoiceFile", fields: [invoiceFileId], references: [id])
+  contractScanId String?   @unique
+  contractScan   Document? @relation("InvoiceContractScan", fields: [contractScanId], references: [id])
+  invoiceFileId  String?   @unique
+  invoiceFile    Document? @relation("InvoiceFile", fields: [invoiceFileId], references: [id])
 
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([matterId, status])
   @@index([status, requestedAt])
@@ -847,32 +854,32 @@ model Billing {
 }
 
 model FeeEntry {
-  id                 String       @id @default(cuid())
-  matterId           String
-  matter             Matter       @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  billingId          String?
-  billing            Billing?     @relation(fields: [billingId], references: [id])
-  type               FeeEntryType
-  amount             Decimal      @db.Decimal(14, 2)
-  occurredAt         DateTime     @default(now())
-  invoiceNo          String?
-  invoiceFile        String?
-  payerOrPayee       String?
-  method             String?
-  note               String?
+  id           String       @id @default(cuid())
+  matterId     String
+  matter       Matter       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  billingId    String?
+  billing      Billing?     @relation(fields: [billingId], references: [id])
+  type         FeeEntryType
+  amount       Decimal      @db.Decimal(14, 2)
+  occurredAt   DateTime     @default(now())
+  invoiceNo    String?
+  invoiceFile  String?
+  payerOrPayee String?
+  method       String?
+  note         String?
 
   parentFeeEntryId   String?
-  parentFeeEntry     FeeEntry?    @relation("CommissionParent", fields: [parentFeeEntryId], references: [id])
-  commissionChildren FeeEntry[]   @relation("CommissionParent")
+  parentFeeEntry     FeeEntry?  @relation("CommissionParent", fields: [parentFeeEntryId], references: [id])
+  commissionChildren FeeEntry[] @relation("CommissionParent")
 
-  beneficiaryUserId  String?
-  beneficiaryUser    User?        @relation("FeeBeneficiary", fields: [beneficiaryUserId], references: [id])
+  beneficiaryUserId String?
+  beneficiaryUser   User?   @relation("FeeBeneficiary", fields: [beneficiaryUserId], references: [id])
 
-  recordedById       String
-  recordedBy         User         @relation("FeeRecorder", fields: [recordedById], references: [id])
+  recordedById String
+  recordedBy   User   @relation("FeeRecorder", fields: [recordedById], references: [id])
 
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([matterId, type, occurredAt])
   @@index([type, occurredAt])
@@ -970,21 +977,21 @@ model SystemSetting {
 
 // 模板定义（系统/律所级，不属于具体 Matter）
 model DocumentTemplate {
-  id                   String            @id @default(cuid())
+  id                   String           @id @default(cuid())
   name                 String
   category             TemplateCategory
   description          String?
-  applicableCategories MatterCategory[]  // 空数组 = 适用全部案件类别
-  docxBlobId           String            @unique
-  docxBlob             Document          @relation("TemplateBlob", fields: [docxBlobId], references: [id])
-  variables            Json              // 变量清单 ["client.name", "matter.caseNumber", ...] 用于缺失提示
-  isBuiltIn            Boolean           @default(false)  // 系统内置不可删
-  enabled              Boolean           @default(true)
+  applicableCategories MatterCategory[] // 空数组 = 适用全部案件类别
+  docxBlobId           String           @unique
+  docxBlob             Document         @relation("TemplateBlob", fields: [docxBlobId], references: [id])
+  variables            Json // 变量清单 ["client.name", "matter.caseNumber", ...] 用于缺失提示
+  isBuiltIn            Boolean          @default(false) // 系统内置不可删
+  enabled              Boolean          @default(true)
   createdById          String?
-  createdBy            User?             @relation("TemplateCreator", fields: [createdById], references: [id])
-  generatedDocs        Document[]        @relation("TemplateGenerated")
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdBy            User?            @relation("TemplateCreator", fields: [createdById], references: [id])
+  generatedDocs        Document[]       @relation("TemplateGenerated")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([category, enabled])
   @@index([isBuiltIn])
@@ -997,7 +1004,7 @@ model DocumentFolder {
   matter     Matter     @relation(fields: [matterId], references: [id], onDelete: Cascade)
   name       String
   orderIndex Int        @default(0)
-  isDefault  Boolean    @default(false)  // 系统按案件类别预置（可改名不可删）
+  isDefault  Boolean    @default(false) // 系统按案件类别预置（可改名不可删）
   documents  Document[]
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
@@ -1013,63 +1020,207 @@ model DocumentFolder {
 // 章种类配置（决策 §12.9.2：approverRoles: Role[] 多角色 OR 关系）
 model SealTypeConfig {
   type             SealType   @id
-  label            String     // 中文显示名
+  label            String // 中文显示名
   description      String?
   approverRoles    UserRole[] // 多角色 OR 关系；空数组 = 仅 requiresLegalRep 生效
-  requiresLegalRep Boolean    @default(false)  // 必须法定代表人本人审批（取 SystemSetting key=firmLegalRepUserId）
+  requiresLegalRep Boolean    @default(false) // 必须法定代表人本人审批（取 SystemSetting key=firmLegalRepUserId）
   enabled          Boolean    @default(true)
   updatedAt        DateTime   @updatedAt
 }
 
 // 用章申请
 model SealRequest {
-  id                   String              @id @default(cuid())
-  code                 String              @unique  // SEAL-2026-0001
-  sealType             SealType
-  matterId             String?
-  matter               Matter?             @relation(fields: [matterId], references: [id])
+  id       String   @id @default(cuid())
+  code     String   @unique // SEAL-2026-0001
+  sealType SealType
+  matterId String?
+  matter   Matter?  @relation(fields: [matterId], references: [id])
 
-  purpose              String              // 用章事由
-  documentTitle        String              // 待盖章文件标题
-  pageCount            Int                 @default(1)
-  requireCrossPageSeal Boolean             @default(false)
-  copies               Int                 @default(1)
-  urgency              Urgency             @default(NORMAL)
+  purpose              String // 用章事由
+  documentTitle        String // 待盖章文件标题
+  pageCount            Int     @default(1)
+  requireCrossPageSeal Boolean @default(false)
+  copies               Int     @default(1)
+  urgency              Urgency @default(NORMAL)
 
   // 待盖章稿（必传） + 盖章后扫描件（盖章完成时必补）
-  draftDocId           String              @unique
-  draftDoc             Document            @relation("SealDraft", fields: [draftDocId], references: [id])
-  stampedDocId         String?             @unique
-  stampedDoc           Document?           @relation("SealStamped", fields: [stampedDocId], references: [id])
+  draftDocId   String    @unique
+  draftDoc     Document  @relation("SealDraft", fields: [draftDocId], references: [id])
+  stampedDocId String?   @unique
+  stampedDoc   Document? @relation("SealStamped", fields: [stampedDocId], references: [id])
 
-  status               SealRequestStatus   @default(PENDING)
-  requestNote          String?
-  approveNote          String?
+  status      SealRequestStatus @default(PENDING)
+  requestNote String?
+  approveNote String?
 
-  requestedById        String
-  requestedBy          User                @relation("SealRequester", fields: [requestedById], references: [id])
-  requestedAt          DateTime            @default(now())
+  requestedById String
+  requestedBy   User     @relation("SealRequester", fields: [requestedById], references: [id])
+  requestedAt   DateTime @default(now())
 
-  approvedById         String?
-  approvedBy           User?               @relation("SealApprover", fields: [approvedById], references: [id])
-  approvedAt           DateTime?
+  approvedById String?
+  approvedBy   User?     @relation("SealApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
 
-  stampedById          String?
-  stampedByUser        User?               @relation("SealStamper", fields: [stampedById], references: [id])
-  stampedAt            DateTime?
+  stampedById   String?
+  stampedByUser User?     @relation("SealStamper", fields: [stampedById], references: [id])
+  stampedAt     DateTime?
 
-  rejectedAt           DateTime?
+  rejectedAt DateTime?
 
   // 被驳回后重新申请的溯源链（旧 → 新）
-  parentSealRequestId  String?
-  parentSealRequest    SealRequest?        @relation("SealResubmission", fields: [parentSealRequestId], references: [id])
-  resubmissions        SealRequest[]       @relation("SealResubmission")
+  parentSealRequestId String?
+  parentSealRequest   SealRequest?  @relation("SealResubmission", fields: [parentSealRequestId], references: [id])
+  resubmissions       SealRequest[] @relation("SealResubmission")
 
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, requestedAt])
   @@index([requestedById, status])
   @@index([sealType, status])
   @@index([matterId])
+}
+
+// ============================================================
+// v0.9: 法院短信收件箱
+// ============================================================
+
+// 短信类型（与旧系统 SMS_TYPE_KEYWORDS 对齐）
+enum SmsType {
+  HEARING_NOTICE // 开庭通知
+  SERVICE_NOTICE // 送达通知
+  FEE_NOTICE // 缴费通知
+  MEDIATION // 调解通知
+  ENFORCEMENT // 执行通知
+  FILING_NOTICE // 立案通知
+  JUDGMENT_NOTICE // 判决通知
+  EVIDENCE_SUBMIT // 提交材料 / 举证
+  OTHER
+}
+
+// 与 Matter 的匹配来源
+enum SmsMatchSource {
+  AUTO_CASE_NUMBER // 按案号自动匹配
+  MANUAL // 用户手动指派
+  UNMATCHED
+}
+
+model SmsMessage {
+  id           String   @id @default(cuid())
+  rawText      String // 原始短信全文
+  receivedAt   DateTime @default(now())
+  receivedById String
+  receivedBy   User     @relation("SmsReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+
+  // 解析结果（含 caseNumbers / court / hearingDate / urls / judge / clerk / phones ...）
+  parsedJson Json
+  smsType    SmsType @default(OTHER)
+
+  // 关联匹配
+  matchedMatterId String?
+  matchedMatter   Matter?        @relation(fields: [matchedMatterId], references: [id], onDelete: SetNull)
+  matchedBy       SmsMatchSource @default(UNMATCHED)
+
+  // 一键生成动作的产物 id（追溯）
+  generatedHearingId  String?
+  generatedDeadlineId String?
+
+  processed   Boolean   @default(false)
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([receivedById, processed, receivedAt])
+  @@index([matchedMatterId])
+  @@index([smsType, receivedAt])
+}
+
+// ============================================================
+// v0.9: 财产保全
+// ============================================================
+
+enum PreservationType {
+  PRE_LITIGATION // 诉前保全
+  LITIGATION // 诉中保全
+  ENFORCEMENT // 执行保全
+}
+
+enum PropertyType {
+  BANK_DEPOSIT // 银行存款
+  REAL_ESTATE // 房产
+  VEHICLE // 车辆
+  EQUITY // 股权
+  IP // 知识产权
+  OTHER // 其他财产
+}
+
+enum GuaranteeType {
+  CASH_DEPOSIT // 保证金
+  GUARANTEE_LETTER // 保函
+  PROPERTY // 财产担保
+  NONE // 无需担保
+}
+
+enum PreservationStatus {
+  ACTIVE // 生效中
+  RENEWED // 已续保
+  EXPIRED // 已到期
+  LIFTED // 已解除
+}
+
+model Preservation {
+  id       String  @id @default(cuid())
+  // 诉前保全可空（决策 §13.8.3）；立案后回填 matterId
+  matterId String?
+  matter   Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  type          PreservationType
+  propertyType  PropertyType
+  amount        Decimal?         @db.Decimal(18, 2)
+  respondent    String // 被保全人
+  guaranteeType GuaranteeType?
+
+  appliedAt  DateTime? // 申请日
+  startDate  DateTime // 生效日（必填）
+  duration   Int // 保全期限（天）；默认按 propertyType 推荐
+  expiryDate DateTime // 到期日 = startDate + duration（可手动覆盖）
+
+  court          String?
+  rulingNumber   String?
+  propertyDetail String?
+  note           String?
+
+  ownerId String?
+  owner   User?   @relation("PreservationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  // 提醒阈值（天）默认 [30, 15, 7, 3, 1]
+  remindDays Int[]                 @default([30, 15, 7, 3, 1])
+  status     PreservationStatus    @default(ACTIVE)
+  renewals   PreservationRenewal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([status, expiryDate])
+  @@index([ownerId, status])
+}
+
+model PreservationRenewal {
+  id             String       @id @default(cuid())
+  preservationId String
+  preservation   Preservation @relation(fields: [preservationId], references: [id], onDelete: Cascade)
+
+  renewedAt       DateTime
+  oldExpiryDate   DateTime
+  newExpiryDate   DateTime
+  renewalDuration Int // 新增的天数
+  note            String?
+
+  performedById String
+  performedBy   User     @relation("RenewalPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+
+  @@index([preservationId])
 }

@@ -1092,6 +1092,59 @@ ADMIN 跨章种类总可审批（in code，不在 approverRoles 数组里）。
 **与卷宗模板联动**（PRD §12.7）：
 卷宗页文档卡片 → "提交用章" 按钮 → `/seals?new=1&draftDocId=...&matterId=...&documentTitle=...` → 自动打开 SealRequestSheet 预填字段。
 
+### 4.19 SmsMessage（法院短信收件箱）⭐ v0.9 新增
+
+PRD §13.2。律师每天被 12368 / 法院短信轰炸，复制粘贴到 `/inbox` 后自动解析、自动匹配 Matter、一键生成 Hearing/Deadline。
+
+| 字段 | 说明 |
+|---|---|
+| `rawText` | 原始短信全文 |
+| `receivedAt` | 收件时间 |
+| `receivedById` | 收件律师 |
+| `parsedJson` | 解析结果 JSON（caseNumbers / court / hearingDate / urls / judge / clerk / phones / appealDeadline / amounts / platforms ...） |
+| `smsType` | 9 类（开庭/送达/缴费/调解/执行/立案/判决/提交材料/其他） |
+| `matchedMatterId` / `matchedBy` | 关联 Matter + 匹配方式（AUTO_CASE_NUMBER / MANUAL / UNMATCHED） |
+| `generatedHearingId` / `generatedDeadlineId` | 一键生成的产物追溯 |
+| `processed` / `processedAt` | 是否已处理（已生成动作或手动标记） |
+
+**关键约束**：
+- 解析 100% 本地正则（v0.9.0 不依赖 AI），AI 兜底留 v0.9.1
+- 匹配逻辑：从 `parsedJson.caseNumbers[]` 取每个案号去 `MatterProcedure.caseNumber` 反查
+- `receivedBy` onDelete=Restrict：用户被禁用前需清理短信归属
+
+### 4.20 Preservation / PreservationRenewal（财产保全）⭐ v0.9 新增
+
+PRD §13.3。商事案件几乎每案必涉。漏续保 = 冻结失效 = 执业事故。
+
+| 字段 | 说明 |
+|---|---|
+| `matterId` | **可空**（决策 §13.8.3 — 诉前保全期间 Matter 可能未建立，立案后回填） |
+| `type` | 诉前/诉中/执行 |
+| `propertyType` | 银行存款/房产/车辆/股权/知识产权/其他 |
+| `amount` | 保全金额（Decimal 18,2） |
+| `respondent` | 被保全人 |
+| `guaranteeType` | 保证金/保函/财产担保/无需担保 |
+| `startDate` | 生效日（必填） |
+| `duration` | 保全期限（天）；默认按 propertyType 推荐 |
+| `expiryDate` | 到期日 = startDate + duration，可手动覆盖 |
+| `remindDays` | 提醒阈值默认 [30, 15, 7, 3, 1] |
+| `status` | 生效/已续保/已到期/已解除 |
+| `renewals` | 续保记录（PreservationRenewal） |
+
+**保全期限默认值（法律依据写死，民诉法第 244 条）**：
+
+| propertyType | 默认天数 |
+|---|---|
+| BANK_DEPOSIT | 365（1 年） |
+| VEHICLE / OTHER | 730（2 年） |
+| REAL_ESTATE / EQUITY / IP | 1095（3 年） |
+
+**关键约束**：
+- `matter` onDelete=SetNull：案件被软删时保全记录保留（用于审计），matterId 置空
+- `owner` onDelete=SetNull：跟进人离职不删保全
+- 续保后 `Preservation.expiryDate` 更新为新到期日，status 变 RENEWED
+- 到期预警通过现有 `Deadline` 派生条目（不重复存提醒逻辑），dashboard 显示
+
 ---
 
 ## 五、internalCode 编号规则（v0.3 修订）
