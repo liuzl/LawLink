@@ -925,14 +925,37 @@ model TimelineEvent {
 }
 
 model ArchiveRecord {
-  id         String   @id @default(cuid())
-  matterId   String
-  matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  summary    String
+  id       String @id @default(cuid())
+  matterId String
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  archiveNo       String               @unique
+  summary         String
+  judgmentSummary String?
+  closedReason    ArchiveClosedReason?
+  completedAt     DateTime?
+  checklistJson   Json
+  missingItems    String[]
+
+  coverDocId   String?
+  catalogDocId String?
+
   archivedBy String
   archivedAt DateTime @default(now())
   exportPath String?
   checksum   String?
+
+  @@index([matterId])
+  @@index([archivedAt])
+}
+
+enum ArchiveClosedReason {
+  JUDGMENT
+  MEDIATION
+  WITHDRAWAL
+  SETTLEMENT
+  RULING
+  OTHER
 }
 
 model AuditLog {
