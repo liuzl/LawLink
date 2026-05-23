@@ -11,7 +11,7 @@ import { RadioChips } from "@/components/ui/radio-chips";
 import { matterCategoryLabel, matterCategoryColor } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 import { IntakeSheet } from "@/app/(app)/intakes/_components/intake-sheet";
-import { MattersGrid, type MatterRow } from "./matters-grid";
+import { MattersTable, type MatterRow } from "./matters-table";
 import { IntakesTable, type IntakeRow } from "./intakes-table";
 
 export type ClientOption = { id: string; name: string; type: ClientType };
@@ -229,7 +229,7 @@ export function MattersView({
       {tab === "intake" ? (
         <IntakesTable items={intakeData?.items ?? []} />
       ) : (
-        <MattersGrid items={matterData?.items ?? []} />
+        <MattersTable items={matterData?.items ?? []} />
       )}
 
       <IntakeSheet
