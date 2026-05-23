@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const smsParseAndSaveSchema = z.object({
   rawText: z.string().min(1, "短信内容必填").max(8000),
-  batch: z.boolean().default(false) // 按空行分隔多条
+  batch: z.boolean().default(false), // 按空行分隔多条
+  useAi: z.boolean().default(false) // v0.9.1：调 AI 抽 summary/action/urgency
 });
 
 export const smsListFilterSchema = z.object({

@@ -14,7 +14,10 @@ import {
   Briefcase,
   ExternalLink,
   Phone,
-  Loader2
+  Loader2,
+  Sparkles,
+  AlertCircle,
+  ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -245,8 +248,29 @@ function SmsCard({
         </span>
       </div>
 
-      {/* 摘要 */}
-      <p className="mt-2 line-clamp-2 text-[13px] text-foreground/85">{parsed.summary}</p>
+      {/* 摘要 + AI 增强字段 */}
+      <div className="mt-2 space-y-1">
+        <div className="flex items-start gap-2">
+          {parsed.aiEnriched && (
+            <span
+              className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+              title="AI 增强解析"
+            >
+              <Sparkles className="h-3 w-3" />
+              AI
+            </span>
+          )}
+          <p className="line-clamp-2 text-[13px] text-foreground/85">{parsed.summary}</p>
+        </div>
+        {parsed.action && (
+          <div className="flex items-baseline gap-1.5 text-[12px]">
+            <ArrowRight className="h-3 w-3 shrink-0 text-primary/70" />
+            <span className="text-muted-foreground">应对：</span>
+            <span className="text-foreground/90">{parsed.action}</span>
+            {parsed.urgency && <UrgencyBadge level={parsed.urgency} />}
+          </div>
+        )}
+      </div>
 
       {/* 字段栏 */}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
@@ -373,6 +397,23 @@ function Field({ icon, children }: { icon?: React.ReactNode; children: React.Rea
     <span className="inline-flex items-center gap-1">
       {icon && <span className="text-muted-foreground/70">{icon}</span>}
       {children}
+    </span>
+  );
+}
+
+function UrgencyBadge({ level }: { level: "HIGH" | "MEDIUM" | "LOW" }) {
+  const meta = {
+    HIGH: { label: "紧急", color: "#DC2626", bg: "rgb(248 113 113 / 0.12)" },
+    MEDIUM: { label: "本周", color: "#D97706", bg: "rgb(252 211 77 / 0.15)" },
+    LOW: { label: "知悉", color: "#737373", bg: "rgb(229 229 229 / 0.5)" }
+  }[level];
+  return (
+    <span
+      className="ml-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px]"
+      style={{ background: meta.bg, color: meta.color }}
+    >
+      <AlertCircle className="h-2.5 w-2.5" />
+      {meta.label}
     </span>
   );
 }

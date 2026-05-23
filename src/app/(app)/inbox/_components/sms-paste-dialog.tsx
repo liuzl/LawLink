@@ -27,6 +27,7 @@ export function SmsPasteDialog({
 }) {
   const [text, setText] = useState("");
   const [batch, setBatch] = useState(false);
+  const [useAi, setUseAi] = useState(false);
   const [pending, startTransition] = useTransition();
 
   // 实时预览
@@ -44,8 +45,9 @@ export function SmsPasteDialog({
     }
     startTransition(async () => {
       try {
-        const res = await parseAndSaveSms({ rawText: text, batch });
-        toast.success(`已解析 ${res.count} 条`);
+        const res = await parseAndSaveSms({ rawText: text, batch, useAi });
+        const aiHint = useAi && res.aiEnrichedCount > 0 ? `，AI 增强 ${res.aiEnrichedCount} 条` : "";
+        toast.success(`已解析 ${res.count} 条${aiHint}`);
         setText("");
         onOpenChange(false);
       } catch (e) {
@@ -83,13 +85,26 @@ export function SmsPasteDialog({
             autoFocus
           />
 
-          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <Checkbox
-              checked={batch}
-              onCheckedChange={(v) => setBatch(v === true)}
-            />
-            <span>多条短信（按空行分隔）—— 一次提交，逐条解析与匹配</span>
-          </label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+              <Checkbox
+                checked={batch}
+                onCheckedChange={(v) => setBatch(v === true)}
+              />
+              <span>多条短信（按空行分隔）—— 一次提交，逐条解析与匹配</span>
+            </label>
+            <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+              <Checkbox
+                checked={useAi}
+                onCheckedChange={(v) => setUseAi(v === true)}
+              />
+              <span>
+                用 AI 增强解析 <Sparkles className="inline h-3 w-3 text-primary" /> ——
+                补 <span className="text-foreground/80">摘要 / 律师动作 / 紧急程度</span>
+                （需先到 设置 → AI 接入 配置）
+              </span>
+            </label>
+          </div>
 
           {preview.length > 0 && (
             <div className="rounded-md border border-hairline bg-muted/20 p-3">

@@ -73,4 +73,8 @@ export type ParsedJson = {
   urls: string[];
   platforms: string[];
   summary: string;
+  // v0.9.1 AI 增强字段
+  aiEnriched?: boolean;
+  action?: string | null;
+  urgency?: "HIGH" | "MEDIUM" | "LOW" | null;
 };

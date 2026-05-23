@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
-import { parseSms, splitSmsBatch, toDate, type ParsedSms } from "@/lib/sms-parser";
+import { parseSms, splitSmsBatch, toDate, enrichWithAi, type ParsedSms } from "@/lib/sms-parser";
 import {
   smsParseAndSaveSchema,
   smsListFilterSchema,
@@ -41,8 +41,13 @@ export async function parseAndSaveSms(input: z.infer<typeof smsParseAndSaveSchem
 
   const createdIds: string[] = [];
 
+  let aiEnrichedCount = 0;
   for (const text of messages) {
-    const parsed: ParsedSms = parseSms(text);
+    let parsed: ParsedSms = parseSms(text);
+    if (data.useAi) {
+      parsed = await enrichWithAi(text, parsed);
+      if (parsed.aiEnriched) aiEnrichedCount++;
+    }
     const matchedMatterId = await findMatchingMatter(parsed.caseNumbers);
 
     const created = await prisma.smsMessage.create({
@@ -64,11 +69,11 @@ export async function parseAndSaveSms(input: z.infer<typeof smsParseAndSaveSchem
     action: "SMS_PARSE_SAVE",
     targetType: "SmsMessage",
     targetId: createdIds.join(","),
-    detail: { count: createdIds.length, batch: data.batch }
+    detail: { count: createdIds.length, batch: data.batch, useAi: data.useAi, aiEnrichedCount }
   });
 
   revalidatePath("/inbox");
-  return { ok: true, ids: createdIds, count: createdIds.length };
+  return { ok: true, ids: createdIds, count: createdIds.length, aiEnrichedCount };
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
