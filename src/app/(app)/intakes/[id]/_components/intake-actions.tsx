@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { ArrowRight, XCircle, Loader2 } from "lucide-react";
+import { ArrowRight, XCircle, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -19,9 +20,22 @@ import { declineIntake, convertIntakeToMatter } from "@/server/intakes/actions";
 
 export function IntakeActions({ intakeId }: { intakeId: string }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+
+  const role = session?.user?.role;
+  const canApprove = role === "ADMIN" || role === "PRINCIPAL_LAWYER";
+
+  if (!canApprove) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-3 py-1.5 text-xs text-muted-foreground">
+        <Clock className="h-3.5 w-3.5" />
+        等待管理员/主任律师审批
+      </div>
+    );
+  }
 
   function handleConvert() {
     if (!confirm("确认转为正式案件？将占用一个案件编号。")) return;

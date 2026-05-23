@@ -76,7 +76,7 @@ export default async function IntakeDetailPage({ params }: { params: { id: strin
           <InfoItem label="案由">
             {intake.cause?.name ?? intake.causeFreeText ?? "—"}
           </InfoItem>
-          <InfoItem label="案源">{intake.source ?? "—"}</InfoItem>
+          <InfoItem label="主办律师">{intake.ownerUser?.name ?? "—"}</InfoItem>
           <InfoItem label="委托方">
             {intake.client ? (
               <Link
@@ -89,7 +89,7 @@ export default async function IntakeDetailPage({ params }: { params: { id: strin
               "—"
             )}
           </InfoItem>
-          <InfoItem label="咨询日期">
+          <InfoItem label="收案日期">
             {new Date(intake.receivedAt).toLocaleDateString("zh-CN")}
           </InfoItem>
         </dl>

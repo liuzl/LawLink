@@ -3,25 +3,23 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import type { Prisma } from "@prisma/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Layers,
-  Users,
-  Clock,
   Info,
-  Wallet,
-  MessageSquare,
-  CheckSquare,
-  FileBox
+  FolderArchive,
+  Clock,
+  Plus,
+  Layers
 } from "lucide-react";
-import { OverviewPanel } from "./overview-panel";
-import { PartiesPanel } from "./parties-panel";
-import { ProceduresPanel } from "./procedures-panel";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { procedureTypeLabel } from "@/lib/enums";
+import { cn } from "@/lib/utils";
+import { InfoPanel } from "./info-panel";
+import { ResourcesPanel } from "./resources-panel";
+import { ProcedureContent } from "./procedure-content";
 import { TimelinePanel } from "./timeline-panel";
-import { FinancePanel } from "./finance-panel";
-import { NotesPanel } from "./notes-panel";
-import { TasksPanel } from "./tasks-panel";
-import { DocumentsPanel, type DocumentPayload } from "./documents-panel";
+import { AddProcedureSheet } from "./procedure-forms";
+import type { DocumentPayload } from "./documents-panel";
 
 type MatterPayload = Prisma.MatterGetPayload<{
   include: {
@@ -101,117 +99,159 @@ export type NotePayload = {
   createdAt: Date;
 };
 
+type TabKey = "info" | "resources" | "timeline" | `proc:${string}`;
+
 export function MatterDetailTabs({
   matter,
   finance,
   userOptions,
   notes,
-  documents
+  documents,
+  intakeContracts
 }: {
   matter: MatterPayload;
   finance: FinancePayload;
   userOptions: UserOption[];
   notes: NotePayload[];
   documents: DocumentPayload[];
+  intakeContracts: DocumentPayload[];
 }) {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState<TabKey>("info");
+  const [addProcOpen, setAddProcOpen] = useState(false);
+
+  // ENGAGED 程序按 order 排序 → 每个一个 tab
+  const engagedProcedures = matter.procedures
+    .filter((p) => p.engagement === "ENGAGED")
+    .sort((a, b) => a.order - b.order);
+
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.1 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
     >
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="h-10 w-full justify-start gap-1 bg-card/40 p-1">
-          <TabsTrigger value="overview" className="gap-1.5">
-            <Info className="h-3.5 w-3.5" />
-            概览
-          </TabsTrigger>
-          <TabsTrigger value="procedures" className="gap-1.5">
-            <Layers className="h-3.5 w-3.5" />
-            程序阶段
-            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
-              {matter.procedures.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="parties" className="gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            当事人
-            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
-              {matter.parties.length + matter.clientLinks.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-1.5">
-            <CheckSquare className="h-3.5 w-3.5" />
-            任务
-            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
-              {matter.tasks.filter((t) => !t.completed).length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5" />
-            沟通
-            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
-              {notes.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5">
-            <FileBox className="h-3.5 w-3.5" />
-            材料
-            <span className="ml-0.5 font-mono text-[10px] tabular text-muted-foreground">
-              {documents.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="finance" className="gap-1.5">
-            <Wallet className="h-3.5 w-3.5" />
-            财务
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            时间线
-          </TabsTrigger>
-        </TabsList>
+      {/* 一级 tab —— 极简下划线 */}
+      <div
+        className="flex items-end gap-5 overflow-x-auto border-b scrollbar-none"
+        style={{ borderColor: "hsl(var(--hairline))" }}
+      >
+        <TabButton active={tab === "info"} onClick={() => setTab("info")}>
+          <Info className="h-3.5 w-3.5" strokeWidth={1.8} />
+          基本信息
+        </TabButton>
 
-        <div className="mt-5">
-          <TabsContent value="overview" forceMount hidden={tab !== "overview"}>
-            <OverviewPanel matter={matter} />
-          </TabsContent>
-          <TabsContent value="procedures" forceMount hidden={tab !== "procedures"}>
-            <ProceduresPanel matter={matter} />
-          </TabsContent>
-          <TabsContent value="parties" forceMount hidden={tab !== "parties"}>
-            <PartiesPanel matter={matter} />
-          </TabsContent>
-          <TabsContent value="tasks" forceMount hidden={tab !== "tasks"}>
-            <TasksPanel
-              matterId={matter.id}
-              tasks={matter.tasks}
-              userOptions={userOptions}
-            />
-          </TabsContent>
-          <TabsContent value="notes" forceMount hidden={tab !== "notes"}>
-            <NotesPanel matterId={matter.id} notes={notes} />
-          </TabsContent>
-          <TabsContent value="documents" forceMount hidden={tab !== "documents"}>
-            <DocumentsPanel
-              matterId={matter.id}
-              documents={documents}
-              procedures={matter.procedures.map((p) => ({
-                id: p.id,
-                label: p.customLabel ?? p.type
-              }))}
-            />
-          </TabsContent>
-          <TabsContent value="finance" forceMount hidden={tab !== "finance"}>
-            <FinancePanel matterId={matter.id} finance={finance} userOptions={userOptions} />
-          </TabsContent>
-          <TabsContent value="timeline" forceMount hidden={tab !== "timeline"}>
-            <TimelinePanel events={matter.timelineEvents} />
-          </TabsContent>
-        </div>
-      </Tabs>
+        <TabButton active={tab === "resources"} onClick={() => setTab("resources")}>
+          <FolderArchive className="h-3.5 w-3.5" strokeWidth={1.8} />
+          案件资料
+          {matter.tasks.filter((x) => !x.completed).length > 0 && (
+            <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
+              {matter.tasks.filter((x) => !x.completed).length}
+            </span>
+          )}
+        </TabButton>
+
+        <span className="mb-3.5 h-3 w-px bg-hairline" style={{ background: "hsl(var(--hairline))" }} />
+
+        {engagedProcedures.map((p, idx) => {
+          const key: TabKey = `proc:${p.id}`;
+          return (
+            <TabButton key={p.id} active={tab === key} onClick={() => setTab(key)}>
+              <span className="ll-roman text-xs">{ROMAN[idx] ?? idx + 1}</span>
+              <span className="font-display text-[0.95rem] italic">
+                {p.customLabel ?? procedureTypeLabel[p.type]}
+              </span>
+              {p.status === "CONCLUDED" && (
+                <Badge
+                  variant="outline"
+                  className="ml-0.5 border-hairline bg-muted/30 px-1 text-[9px] font-normal"
+                  style={{ borderColor: "hsl(var(--hairline))" }}
+                >
+                  已结
+                </Badge>
+              )}
+            </TabButton>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setAddProcOpen(true)}
+          className="mb-3 inline-flex items-center gap-1 px-1 text-xs text-primary hover:text-primary/80"
+        >
+          <Plus className="h-3 w-3" strokeWidth={2} />
+          添加程序
+        </button>
+
+        <div className="flex-1" />
+
+        <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
+          <Clock className="h-3.5 w-3.5" strokeWidth={1.8} />
+          时间线
+        </TabButton>
+      </div>
+
+      <div className="mt-4">
+        {tab === "info" && (
+          <InfoPanel matter={matter} intakeContracts={intakeContracts} userOptions={userOptions} />
+        )}
+        {tab === "resources" && (
+          <ResourcesPanel
+            matter={matter}
+            notes={notes}
+            documents={documents}
+            finance={finance}
+            userOptions={userOptions}
+          />
+        )}
+        {tab === "timeline" && <TimelinePanel events={matter.timelineEvents} />}
+
+        {engagedProcedures.map((p) => {
+          if (tab !== `proc:${p.id}`) return null;
+          return <ProcedureContent key={p.id} procedure={p} />;
+        })}
+      </div>
+
+      <AddProcedureSheet
+        open={addProcOpen}
+        onOpenChange={setAddProcOpen}
+        matterId={matter.id}
+        category={matter.category}
+        nextOrder={matter.procedures.length + 1}
+      />
     </motion.div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group relative inline-flex shrink-0 items-center gap-1.5 pb-2.5 pt-0.5 text-[13px] transition-colors",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute -bottom-px left-0 right-0 h-[2px] bg-primary"
+        />
+      )}
+    </button>
   );
 }
 

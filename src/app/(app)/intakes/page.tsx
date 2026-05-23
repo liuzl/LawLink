@@ -1,26 +1,6 @@
-import { listIntakes } from "@/server/intakes/actions";
-import { listClients } from "@/server/clients/actions";
-import { IntakesView } from "./_components/intakes-view";
-import type { IntakeStatus } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-type Props = {
-  searchParams: { search?: string; status?: IntakeStatus };
-};
-
-export default async function IntakesPage({ searchParams }: Props) {
-  const [intakes, clients] = await Promise.all([
-    listIntakes({ search: searchParams.search, status: searchParams.status }),
-    listClients({ pageSize: 100 })
-  ]);
-
-  return (
-    <IntakesView
-      initialData={intakes}
-      clientOptions={clients.items.map((c) => ({ id: c.id, name: c.name, type: c.type }))}
-      initialFilters={{
-        search: searchParams.search ?? "",
-        status: searchParams.status ?? "ALL"
-      }}
-    />
-  );
+// v0.4: /intakes 列表已合并到 /matters?tab=intake，老链接重定向
+export default function IntakesPage() {
+  redirect("/matters?tab=intake");
 }
