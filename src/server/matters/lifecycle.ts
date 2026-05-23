@@ -11,18 +11,12 @@ const closeMatterSchema = z.object({
   summary: z.string().min(1, "结案小结必填").max(2000)
 });
 
-const archiveMatterSchema = z.object({
-  id: z.string().cuid(),
-  summary: z.string().max(2000).optional().or(z.literal(""))
-});
-
 const holdMatterSchema = z.object({
   id: z.string().cuid(),
   reason: z.string().max(500).optional().or(z.literal(""))
 });
 
 export type CloseMatterInput = z.infer<typeof closeMatterSchema>;
-export type ArchiveMatterInput = z.infer<typeof archiveMatterSchema>;
 export type HoldMatterInput = z.infer<typeof holdMatterSchema>;
 
 /**
@@ -66,57 +60,9 @@ export async function closeMatter(input: CloseMatterInput) {
 }
 
 /**
- * 归档：把案件状态切到 ARCHIVED，创建 ArchiveRecord，归档后变只读。
- * 仅 ADMIN / PRINCIPAL_LAWYER 可归档。
+ * 归档：完整流程见 src/server/archive/actions.ts → archiveMatter
+ * 这里不再保留旧的轻量版本（v0.9.4 起统一走 ArchiveWizard）。
  */
-export async function archiveMatter(input: ArchiveMatterInput) {
-  const session = await requireSession();
-  const data = archiveMatterSchema.parse(input);
-
-  if (session.user.role !== "ADMIN" && session.user.role !== "PRINCIPAL_LAWYER") {
-    throw new Error("只有管理员或主办律师可以归档");
-  }
-
-  await prisma.$transaction(async (tx) => {
-    const matter = await tx.matter.update({
-      where: { id: data.id },
-      data: {
-        status: "ARCHIVED",
-        archivedAt: new Date(),
-        closedAt: { set: new Date() } // 归档时默认也是结案
-      }
-    });
-
-    await tx.archiveRecord.create({
-      data: {
-        matterId: matter.id,
-        summary: data.summary || "（无）",
-        archivedBy: session.user.name ?? session.user.id
-      }
-    });
-
-    await tx.timelineEvent.create({
-      data: {
-        matterId: matter.id,
-        eventType: "MATTER_ARCHIVED",
-        title: "案件已归档",
-        content: data.summary || undefined,
-        occurredAt: new Date()
-      }
-    });
-  });
-
-  await audit({
-    userId: session.user.id,
-    action: "MATTER_ARCHIVE",
-    targetType: "Matter",
-    targetId: data.id
-  });
-
-  revalidatePath(`/matters/${data.id}`);
-  revalidatePath("/matters");
-  return { ok: true };
-}
 
 /**
  * 重新开放（从 ON_HOLD / CLOSED 回到 IN_PROGRESS）。
