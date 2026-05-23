@@ -1,7 +1,7 @@
 import { HeroBlock } from "@/components/dashboard/hero-block";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { ScheduleList } from "@/components/dashboard/schedule-list";
-import { TodoList } from "@/components/dashboard/todo-list";
+import { AlertsList } from "@/components/dashboard/alerts-list";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 
@@ -19,7 +19,7 @@ export default function DashboardPage() {
           <ScheduleList />
         </div>
         <div className="lg:col-span-2">
-          <TodoList />
+          <AlertsList />
         </div>
       </div>
 
