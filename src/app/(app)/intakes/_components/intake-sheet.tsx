@@ -28,13 +28,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -43,8 +43,10 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioChips } from "@/components/ui/radio-chips";
 import {
   matterCategoryLabel,
+  matterCategoryColor,
   procedureTypeLabel,
   litigationStandingLabel,
   feeTypeLabel,
@@ -247,39 +249,28 @@ export function IntakeSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex w-full max-w-2xl flex-col gap-0 p-0"
-      >
-        <SheetHeader className="border-b border-border bg-background/60 px-6 py-4 backdrop-blur">
-          <SheetTitle>新建收案</SheetTitle>
-          <SheetDescription className="text-xs">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[88vh] w-[92vw] max-w-3xl flex-col gap-0 p-0">
+        <DialogHeader className="border-b border-hairline px-6 py-4">
+          <DialogTitle>新建收案</DialogTitle>
+          <DialogDescription className="text-xs">
             提交后进入"待审批"，由管理员/主任律师确认后转为正式案件
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             {/* 1. 案件类别 */}
             <Section title="① 案件类别" required>
-              <div className="grid grid-cols-3 gap-2">
-                {CATEGORIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setValue("category", c)}
-                    className={cn(
-                      "rounded-md border px-3 py-2 text-sm transition-colors",
-                      category === c
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-background/40 text-muted-foreground hover:border-input"
-                    )}
-                  >
-                    {matterCategoryLabel[c]}
-                  </button>
-                ))}
-              </div>
+              <RadioChips
+                items={CATEGORIES.map((c) => ({
+                  value: c,
+                  label: matterCategoryLabel[c],
+                  accent: matterCategoryColor[c]
+                }))}
+                value={category}
+                onChange={(c) => setValue("category", c)}
+              />
             </Section>
 
             {/* 2. 程序 + 我方诉讼地位 + 机构 */}
@@ -720,7 +711,7 @@ export function IntakeSheet({
             </Section>
           </div>
 
-          <SheetFooter className="border-t border-border bg-background/60 px-6 py-4 backdrop-blur">
+          <DialogFooter className="border-t border-hairline px-6 py-4">
             <Button
               type="button"
               variant="outline"
@@ -733,10 +724,10 @@ export function IntakeSheet({
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               提交审批
             </Button>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

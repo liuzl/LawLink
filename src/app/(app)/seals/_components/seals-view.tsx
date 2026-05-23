@@ -65,9 +65,6 @@ export function SealsView({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl italic">用章</h1>
-          <p className="mt-0.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-            seal · 申请 / 审批 / 盖章 全所留档
-          </p>
         </div>
         <Button onClick={() => setSheetOpen(true)} className="gap-1.5">
           <Plus className="h-3.5 w-3.5" />

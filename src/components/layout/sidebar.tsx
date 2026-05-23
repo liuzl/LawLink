@@ -37,9 +37,7 @@ export function Sidebar() {
           <span className="font-display text-[1.2rem] font-medium tracking-tight">
             LawLink
           </span>
-          <span className="font-eyebrow text-[0.55rem] text-muted-foreground/80">
-            ATTORNEY · WORKSPACE
-          </span>
+          <span className="text-[10px] text-muted-foreground/80">律师工作台</span>
         </div>
       </Link>
 
@@ -47,9 +45,7 @@ export function Sidebar() {
 
       {/* 主导航 */}
       <nav className="flex-1 px-3 py-4">
-        <div className="mb-2 px-3 font-eyebrow text-[0.58rem] text-muted-foreground/70">
-          Workspace
-        </div>
+        <div className="mb-2 px-3 text-[10px] text-muted-foreground/70">导航</div>
         <div className="space-y-0.5">
           {primaryNav.map((item) => (
             <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
@@ -58,9 +54,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 pb-4">
-        <div className="mb-2 px-3 font-eyebrow text-[0.58rem] text-muted-foreground/70">
-          Settings
-        </div>
+        <div className="mb-2 px-3 text-[10px] text-muted-foreground/70">设置</div>
         <div className="space-y-0.5">
           {secondaryNav.map((item) => (
             <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />

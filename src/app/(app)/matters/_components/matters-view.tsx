@@ -130,9 +130,6 @@ export function MattersView({
       <header className="space-y-2">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-              Case Management
-            </div>
             <h1 className="ll-h1">案件管理</h1>
             <p className="text-[13px] text-muted-foreground">
               <span className="text-foreground/80">

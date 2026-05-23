@@ -22,10 +22,7 @@ export function RevenueChart() {
     >
       <header className="flex items-center justify-between px-5 pb-3 pt-4">
         <div>
-          <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-            Revenue · 6M
-          </div>
-          <h2 className="mt-0.5 font-display text-lg tracking-tight">近 6 个月实收趋势</h2>
+          <h2 className="font-display text-lg italic tracking-tight">近 6 个月实收趋势</h2>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           <Legend color="hsl(var(--primary))" label="实收" thick />

@@ -43,10 +43,6 @@ export function HeroBlock() {
         <div className="flex h-full flex-col justify-between gap-5">
           {/* 顶部 eyebrow + 日期 */}
           <div className="flex items-center gap-3">
-            <span className="font-eyebrow text-[0.62rem] text-muted-foreground">
-              Vol. {today.getFullYear()} · {getRomanMonth(today.getMonth())}
-            </span>
-            <div className="ll-rule-accent" />
             <span className="text-xs text-muted-foreground">
               {formatDate(today, "full")}
             </span>
@@ -120,9 +116,7 @@ export function HeroBlock() {
             <span className="ll-stat font-display text-[4rem] leading-none text-foreground/95">
               {todayFocus.daysLeft}
             </span>
-            <span className="font-eyebrow text-[0.66rem] text-muted-foreground">
-              Days
-            </span>
+            <span className="text-[12px] text-muted-foreground">天</span>
           </div>
         </div>
 

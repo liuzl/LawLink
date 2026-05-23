@@ -70,9 +70,6 @@ export function ScheduleView({ items }: { items: ScheduleItem[] }) {
       <header className="space-y-2">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-              Calendar
-            </div>
             <h1 className="ll-h1">日程</h1>
             <p className="text-[13px] text-muted-foreground">未来 90 天的开庭、期限、任务</p>
           </div>

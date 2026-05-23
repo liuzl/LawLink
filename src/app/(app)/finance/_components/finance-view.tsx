@@ -124,9 +124,6 @@ export function FinanceView({
     >
       <header className="space-y-2">
         <div className="space-y-1">
-          <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-            Finance
-          </div>
           <h1 className="ll-h1">财务管理</h1>
           <p className="text-[13px] text-muted-foreground">
             全所收付流水 + 开票管理 ·{" "}

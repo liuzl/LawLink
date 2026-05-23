@@ -15,10 +15,7 @@ export function CategoryChart() {
       className="ll-surface flex h-full flex-col"
     >
       <header className="px-5 pb-3 pt-4">
-        <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-          Portfolio Mix
-        </div>
-        <h2 className="mt-0.5 font-display text-lg tracking-tight">案件类型分布</h2>
+        <h2 className="font-display text-lg italic tracking-tight">案件类型分布</h2>
       </header>
 
       <div className="ll-hairline-t grid flex-1 grid-cols-5 items-center gap-3 p-4">
@@ -46,9 +43,7 @@ export function CategoryChart() {
             <span className="ll-stat text-[2rem] leading-none text-foreground">
               {total}
             </span>
-            <span className="mt-1 font-eyebrow text-[0.58rem] text-muted-foreground">
-              Total
-            </span>
+            <span className="mt-1 text-[10px] text-muted-foreground">总数</span>
           </div>
         </div>
 

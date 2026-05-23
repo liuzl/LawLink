@@ -89,9 +89,6 @@ export function ClientsView({ initialData, initialFilters }: Props) {
       <header className="space-y-2">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-              Clients
-            </div>
             <h1 className="ll-h1">客户管理</h1>
             <p className="text-[13px] text-muted-foreground">
               共 <span className="font-mono tabular text-foreground">{initialData.total}</span> 位客户

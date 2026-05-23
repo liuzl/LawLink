@@ -28,10 +28,7 @@ export function ScheduleList() {
     >
       <header className="flex items-center justify-between px-5 pb-3 pt-4">
         <div>
-          <div className="font-eyebrow text-[0.58rem] text-muted-foreground">
-            Upcoming
-          </div>
-          <h2 className="mt-0.5 font-display text-lg tracking-tight">近期日程</h2>
+          <h2 className="font-display text-lg italic tracking-tight">近期日程</h2>
         </div>
         <button className="group inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
           完整日历

@@ -20,17 +20,13 @@ export default function LoginPage() {
             <div className="font-display text-[1.5rem] font-medium leading-none tracking-tight">
               LawLink
             </div>
-            <div className="mt-1 font-eyebrow text-[0.6rem] text-muted-foreground/80">
-              Attorney · Workspace
-            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground/80">律师工作台</div>
           </div>
         </div>
 
         <div className="space-y-8">
           <div className="space-y-4">
-            <div className="font-eyebrow text-[0.62rem] text-primary/85">
-              Lex · Anno {new Date().getFullYear()}
-            </div>
+            <div className="text-[11px] text-primary/85">{new Date().getFullYear()}</div>
             <h2 className="font-display text-[3.2rem] font-medium leading-[1.05] tracking-tight">
               把精力放在
               <br />
@@ -54,18 +50,15 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <div className="font-eyebrow text-[0.58rem] text-muted-foreground/70">
-          MIT License · Self-hosted ·{" "}
-          <span className="font-mono">v0.7.0</span>
+        <div className="text-[11px] text-muted-foreground/70">
+          MIT 协议 · 自主部署 · <span className="font-mono">v0.8.0</span>
         </div>
       </div>
 
       {/* 右侧：登录卡 */}
       <div className="ll-surface flex flex-col justify-center p-10 lg:p-12">
         <div className="mb-8">
-          <div className="font-eyebrow text-[0.62rem] text-muted-foreground">
-            Sign in
-          </div>
+          <div className="text-[11px] text-muted-foreground">登录</div>
           <h1 className="mt-2 font-display text-[2rem] font-medium tracking-tight">
             欢迎回来
           </h1>

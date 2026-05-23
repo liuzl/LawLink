@@ -4,12 +4,12 @@ import { useState, useTransition, useEffect } from "react";
 import { FileText, Loader2, Paperclip, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { RadioChips } from "@/components/ui/radio-chips";
 import { createSealRequest } from "@/server/seals/actions";
 import {
   type SealTypeConfigRow,
@@ -127,17 +128,17 @@ export function SealRequestSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>新建用章申请</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88vh] w-[92vw] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>新建用章申请</DialogTitle>
+        </DialogHeader>
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* 联动提示 */}
           {hasExisting && (
             <div
-              className="ll-surface flex items-start gap-2 rounded p-2.5 text-[12px]"
+              className="ll-surface flex items-start gap-2 rounded p-2.5 text-[12px] md:col-span-2"
               style={{ background: "rgb(96 165 250 / 0.08)" }}
             >
               <Link2 className="mt-0.5 h-3.5 w-3.5 text-primary" />
@@ -150,22 +151,20 @@ export function SealRequestSheet({
             </div>
           )}
 
-          <div>
+          <div className="md:col-span-2">
             <Label className="text-[11px]">章种类 *</Label>
-            <Select value={sealType} onValueChange={setSealType}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="选择章种类" />
-              </SelectTrigger>
-              <SelectContent>
-                {enabledConfigs.map((c) => (
-                  <SelectItem key={c.type} value={c.type}>
-                    {SEAL_TYPE_CN[c.type] ?? c.type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RadioChips
+              className="mt-2"
+              items={enabledConfigs.map((c) => ({
+                value: c.type as string,
+                label: SEAL_TYPE_CN[c.type] ?? c.type,
+                description: c.description ?? undefined
+              }))}
+              value={sealType}
+              onChange={setSealType}
+            />
             {sealType && (
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1.5 text-[10px] text-muted-foreground">
                 {enabledConfigs.find((c) => c.type === sealType)?.description}
               </p>
             )}
@@ -192,7 +191,7 @@ export function SealRequestSheet({
             </Select>
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label className="text-[11px]">用章事由 *</Label>
             <Textarea
               value={purpose}
@@ -203,7 +202,7 @@ export function SealRequestSheet({
             />
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label className="text-[11px]">文件标题 *</Label>
             <Input
               value={documentTitle}
@@ -235,7 +234,7 @@ export function SealRequestSheet({
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between md:col-span-2">
             <label className="flex items-center gap-2 text-[12px]">
               <Checkbox
                 checked={crossPage}
@@ -243,16 +242,18 @@ export function SealRequestSheet({
               />
               需要骑缝章
             </label>
-            <label className="flex items-center gap-2 text-[12px]">
-              <Checkbox
-                checked={urgency === "URGENT"}
-                onCheckedChange={(v) => setUrgency(v === true ? "URGENT" : "NORMAL")}
-              />
-              <span className={urgency === "URGENT" ? "text-destructive" : ""}>紧急</span>
-            </label>
+            <RadioChips
+              size="sm"
+              items={[
+                { value: "NORMAL", label: "普通" },
+                { value: "URGENT", label: "紧急", accent: "#DC2626" }
+              ]}
+              value={urgency}
+              onChange={(v) => setUrgency(v as "NORMAL" | "URGENT")}
+            />
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label className="text-[11px]">备注</Label>
             <Textarea
               value={requestNote}
@@ -263,7 +264,7 @@ export function SealRequestSheet({
           </div>
 
           {!hasExisting && (
-            <div>
+            <div className="md:col-span-2">
               <Label className="text-[11px]">待盖章稿 *</Label>
               <div className="mt-1">
                 <label className="flex cursor-pointer items-center gap-2 rounded border border-dashed border-hairline px-3 py-3 text-[12px] text-muted-foreground hover:bg-muted/30">
@@ -288,7 +289,7 @@ export function SealRequestSheet({
           )}
         </div>
 
-        <SheetFooter className="mt-6">
+        <DialogFooter className="mt-6">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
@@ -296,8 +297,8 @@ export function SealRequestSheet({
             {pending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
             提交申请
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
