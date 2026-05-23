@@ -322,7 +322,7 @@ export async function createSealRequest(formData: FormData) {
     detail: { code, sealType: data.sealType, matterId: data.matterId }
   });
 
-  revalidatePath("/seals");
+  revalidatePath("/approvals/seals");
   if (data.matterId) revalidatePath(`/matters/${data.matterId}`);
   return { ok: true, id: created.id, code };
 }
@@ -362,7 +362,7 @@ export async function approveSealRequest(input: z.infer<typeof sealApproveSchema
     detail: { sealType: seal.sealType }
   });
 
-  revalidatePath("/seals");
+  revalidatePath("/approvals/seals");
   if (seal.matterId) revalidatePath(`/matters/${seal.matterId}`);
   return { ok: true };
 }
@@ -403,7 +403,7 @@ export async function rejectSealRequest(input: z.infer<typeof sealRejectSchema>)
     detail: { reason: data.reason }
   });
 
-  revalidatePath("/seals");
+  revalidatePath("/approvals/seals");
   if (seal.matterId) revalidatePath(`/matters/${seal.matterId}`);
   return { ok: true };
 }
@@ -480,7 +480,7 @@ export async function stampSealRequest(formData: FormData) {
     detail: { sealType: seal.sealType }
   });
 
-  revalidatePath("/seals");
+  revalidatePath("/approvals/seals");
   if (seal.matterId) revalidatePath(`/matters/${seal.matterId}`);
   return { ok: true };
 }
@@ -516,7 +516,7 @@ export async function cancelSealRequest(input: z.infer<typeof sealCancelSchema>)
     targetId: data.id
   });
 
-  revalidatePath("/seals");
+  revalidatePath("/approvals/seals");
   if (seal.matterId) revalidatePath(`/matters/${seal.matterId}`);
   return { ok: true };
 }

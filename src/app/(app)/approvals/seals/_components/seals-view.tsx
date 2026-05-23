@@ -64,7 +64,10 @@ export function SealsView({
       {/* 标题区 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl italic">用章</h1>
+          <h1 className="font-display text-2xl italic">审批 · 用章</h1>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            未来可扩展文书内审等其他审批类型
+          </p>
         </div>
         <Button onClick={() => setSheetOpen(true)} className="gap-1.5">
           <Plus className="h-3.5 w-3.5" />

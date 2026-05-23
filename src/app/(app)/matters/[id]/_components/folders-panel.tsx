@@ -298,7 +298,7 @@ function DocCard({ doc, matterId }: { doc: FolderDocument; matterId: string }) {
           type="button"
           onClick={() => {
             // 段 5 + 段 6 联动：跳转 /seals?new=1&draftDocId=...&matterId=...
-            const url = new URL("/seals", window.location.origin);
+            const url = new URL("/approvals/seals", window.location.origin);
             url.searchParams.set("new", "1");
             url.searchParams.set("draftDocId", doc.id);
             url.searchParams.set("matterId", matterId);

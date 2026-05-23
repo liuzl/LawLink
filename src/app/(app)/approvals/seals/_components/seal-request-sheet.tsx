@@ -29,6 +29,10 @@ import {
   type MatterOption,
   SEAL_TYPE_CN
 } from "./seal-types";
+import { MatterCombobox } from "./matter-combobox";
+
+const PURPOSE_PRESETS = ["委托合同", "法律意见书", "所函", "证明", "其他"] as const;
+type PurposePreset = typeof PURPOSE_PRESETS[number];
 
 export function SealRequestSheet({
   open,
@@ -49,7 +53,8 @@ export function SealRequestSheet({
 }) {
   const [sealType, setSealType] = useState<string>("");
   const [matterId, setMatterId] = useState<string>("");
-  const [purpose, setPurpose] = useState("");
+  const [purposePreset, setPurposePreset] = useState<PurposePreset | "">("");
+  const [purposeOther, setPurposeOther] = useState("");
   const [documentTitle, setDocumentTitle] = useState("");
   const [pageCount, setPageCount] = useState(1);
   const [crossPage, setCrossPage] = useState(false);
@@ -68,7 +73,8 @@ export function SealRequestSheet({
   const reset = () => {
     setSealType("");
     setMatterId("");
-    setPurpose("");
+    setPurposePreset("");
+    setPurposeOther("");
     setDocumentTitle("");
     setPageCount(1);
     setCrossPage(false);
@@ -78,6 +84,14 @@ export function SealRequestSheet({
     setFile(null);
   };
 
+  // 拼出实际入库的 purpose 字符串
+  const resolvedPurpose =
+    purposePreset === "其他"
+      ? purposeOther.trim()
+        ? `其他：${purposeOther.trim()}`
+        : ""
+      : purposePreset;
+
   const enabledConfigs = configs.filter((c) => c.enabled);
   const hasExisting = !!preset?.draftDocId;
 
@@ -86,8 +100,12 @@ export function SealRequestSheet({
       toast.error("请选择章种类");
       return;
     }
-    if (!purpose.trim()) {
-      toast.error("请填写用章事由");
+    if (!purposePreset) {
+      toast.error("请选择用印事由");
+      return;
+    }
+    if (purposePreset === "其他" && !purposeOther.trim()) {
+      toast.error("请填写「其他」用印事由的具体说明");
       return;
     }
     if (!documentTitle.trim()) {
@@ -102,7 +120,7 @@ export function SealRequestSheet({
     const fd = new FormData();
     fd.set("sealType", sealType);
     if (matterId) fd.set("matterId", matterId);
-    fd.set("purpose", purpose.trim());
+    fd.set("purpose", resolvedPurpose);
     fd.set("documentTitle", documentTitle.trim());
     fd.set("pageCount", String(pageCount));
     fd.set("requireCrossPageSeal", String(crossPage));
@@ -172,34 +190,33 @@ export function SealRequestSheet({
 
           <div>
             <Label className="text-[11px]">关联案件 (可选)</Label>
-            <Select
-              value={matterId || "none"}
-              onValueChange={(v) => setMatterId(v === "none" ? "" : v)}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="不关联案件" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">不关联案件</SelectItem>
-                {matters.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <span className="font-mono text-[10px]">{m.internalCode}</span>
-                    <span className="ml-1">{m.title}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="mt-1">
+              <MatterCombobox
+                matters={matters}
+                value={matterId}
+                onChange={setMatterId}
+                placeholder="不关联案件"
+              />
+            </div>
           </div>
 
           <div className="md:col-span-2">
-            <Label className="text-[11px]">用章事由 *</Label>
-            <Textarea
-              value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
-              placeholder="如：出具法律意见书寄送 XX 公司"
-              rows={2}
-              className="mt-1 text-[12px]"
+            <Label className="text-[11px]">用印事由 *</Label>
+            <RadioChips
+              className="mt-2"
+              items={PURPOSE_PRESETS.map((p) => ({ value: p, label: p }))}
+              value={purposePreset || null}
+              onChange={(v) => setPurposePreset(v as PurposePreset)}
             />
+            {purposePreset === "其他" && (
+              <Textarea
+                value={purposeOther}
+                onChange={(e) => setPurposeOther(e.target.value)}
+                placeholder="请说明具体事由"
+                rows={2}
+                className="mt-2 text-[12px]"
+              />
+            )}
           </div>
 
           <div className="md:col-span-2">
