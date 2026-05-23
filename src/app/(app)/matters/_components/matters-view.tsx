@@ -3,21 +3,15 @@
 import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Search, FolderOpen, X, Clock, CheckCircle2, Archive } from "lucide-react";
+import { Plus, Search, X, Clock, CheckCircle2, Archive } from "lucide-react";
 import type { MatterCategory, ClientType, UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { matterCategoryLabel } from "@/lib/enums";
+import { RadioChips } from "@/components/ui/radio-chips";
+import { matterCategoryLabel, matterCategoryColor } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 import { IntakeSheet } from "@/app/(app)/intakes/_components/intake-sheet";
-import { MattersTable, type MatterRow } from "./matters-table";
+import { MattersGrid, type MatterRow } from "./matters-grid";
 import { IntakesTable, type IntakeRow } from "./intakes-table";
 
 export type ClientOption = { id: string; name: string; type: ClientType };
@@ -208,28 +202,20 @@ export function MattersView({
         </form>
 
         {tab !== "intake" && (
-          <Select
+          <RadioChips
+            size="sm"
+            items={ALL_CATEGORIES.map((c) => ({
+              value: c,
+              label: c === "ALL" ? "全部" : matterCategoryLabel[c as MatterCategory],
+              accent: c === "ALL" ? undefined : matterCategoryColor[c as MatterCategory]
+            }))}
             value={category}
-            onValueChange={(v) => {
+            onChange={(v) => {
               const next = v as MatterCategory | "ALL";
               setCategory(next);
               startTransition(() => router.replace(buildUrl({ category: next })));
             }}
-          >
-            <SelectTrigger
-              className="h-9 w-36 border-hairline bg-card/40"
-              style={{ borderColor: "hsl(var(--hairline))" }}
-            >
-              <SelectValue placeholder="案件类别" />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c === "ALL" ? "全部类别" : matterCategoryLabel[c as MatterCategory]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         )}
 
         {hasFilters && (
@@ -243,7 +229,7 @@ export function MattersView({
       {tab === "intake" ? (
         <IntakesTable items={intakeData?.items ?? []} />
       ) : (
-        <MattersTable items={matterData?.items ?? []} />
+        <MattersGrid items={matterData?.items ?? []} />
       )}
 
       <IntakeSheet

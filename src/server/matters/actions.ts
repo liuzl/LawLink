@@ -61,6 +61,13 @@ export async function listMatters(input: Partial<MatterListQuery> = {}) {
           take: 1,
           select: { id: true, type: true, caseNumber: true, status: true }
         },
+        // v0.8.1: 卡片化需要前几位对方/第三人
+        parties: {
+          where: { role: { in: ["OPPOSING_PARTY", "THIRD_PARTY"] } },
+          orderBy: [{ role: "asc" }, { ordinal: "asc" }],
+          take: 3,
+          select: { id: true, name: true, role: true, standing: true }
+        },
         _count: { select: { procedures: true } }
       }
     }),
