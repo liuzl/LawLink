@@ -34,7 +34,7 @@ import { RadioChips } from "@/components/ui/radio-chips";
 import { MatterCombobox } from "@/app/(app)/approvals/seals/_components/matter-combobox";
 import { cn } from "@/lib/utils";
 import { createExpress, refreshExpress, deleteExpress } from "@/server/express/actions";
-import { SUPPORTED_COMPANIES, detectCompany } from "@/lib/express/track";
+import { SUPPORTED_COMPANIES, detectCompany } from "@/lib/express/companies";
 
 type Row = Prisma.ExpressTrackingGetPayload<{
   include: {
