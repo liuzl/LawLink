@@ -89,12 +89,16 @@ const CATEGORIES: DocumentCategory[] = [
 
 export function DocumentsPanel({
   matterId,
+  matterStatus,
   documents,
-  procedures
+  procedures,
+  folders
 }: {
   matterId: string;
+  matterStatus?: string;
   documents: DocumentPayload[];
   procedures: { id: string; label: string }[];
+  folders: { id: string; name: string }[];
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<DocumentCategory | "ALL">("ALL");
@@ -244,7 +248,9 @@ export function DocumentsPanel({
 
       <UploadSheet
         matterId={matterId}
+        matterStatus={matterStatus}
         procedures={procedures}
+        folders={folders}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
@@ -283,23 +289,37 @@ function CategoryChip({
   );
 }
 
+const ARCHIVE_FOLDER_NAMES = new Set(["结案", "归档"]);
+
 function UploadSheet({
   matterId,
+  matterStatus,
   procedures,
+  folders,
   open,
   onOpenChange
 }: {
   matterId: string;
+  matterStatus?: string;
   procedures: { id: string; label: string }[];
+  folders: { id: string; name: string }[];
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
+  const isArchived = matterStatus === "ARCHIVED";
+  const visibleFolders = isArchived
+    ? folders.filter((f) => ARCHIVE_FOLDER_NAMES.has(f.name))
+    : folders;
+
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [category, setCategory] = useState<DocumentCategory>("EVIDENCE");
   const [procedureId, setProcedureId] = useState<string>("none");
+  const [folderId, setFolderId] = useState<string>(
+    isArchived ? (visibleFolders[0]?.id ?? "none") : "none"
+  );
   const [encrypted, setEncrypted] = useState(false);
 
   function reset() {
@@ -307,6 +327,7 @@ function UploadSheet({
     setName("");
     setCategory("EVIDENCE");
     setProcedureId("none");
+    setFolderId(isArchived ? (visibleFolders[0]?.id ?? "none") : "none");
     setEncrypted(false);
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -330,11 +351,16 @@ function UploadSheet({
       toast.warning("请填写材料名称");
       return;
     }
+    if (isArchived && folderId === "none") {
+      toast.warning("案件已归档，需选择「结案」或「归档」卷宗");
+      return;
+    }
     const fd = new FormData();
     fd.set("matterId", matterId);
     fd.set("name", name.trim());
     fd.set("category", category);
     if (procedureId !== "none") fd.set("procedureId", procedureId);
+    if (folderId !== "none") fd.set("folderId", folderId);
     fd.set("encrypted", String(encrypted));
     fd.set("file", file);
 
@@ -436,6 +462,28 @@ function UploadSheet({
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+
+          <Field label={isArchived ? "归档卷宗 *" : "归属卷宗"}>
+            <Select value={folderId} onValueChange={setFolderId}>
+              <SelectTrigger>
+                <SelectValue placeholder={isArchived ? "请选择归档卷宗" : "可选"} />
+              </SelectTrigger>
+              <SelectContent>
+                {!isArchived && <SelectItem value="none">不归属卷宗（散件）</SelectItem>}
+                {visibleFolders.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                    {ARCHIVE_FOLDER_NAMES.has(f.name) ? " · 归档" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isArchived && (
+              <p className="text-[11px] text-[#9B7BF7]">
+                案件已归档，仅允许补传到「结案」或「归档」卷宗
+              </p>
+            )}
           </Field>
 
           {procedures.length > 0 && (

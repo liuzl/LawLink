@@ -31,6 +31,7 @@ export async function uploadDocument(formData: FormData) {
   const matterIdRaw = formData.get("matterId");
   const intakeIdRaw = formData.get("intakeId");
   const procedureId = formData.get("procedureId");
+  const folderIdRaw = formData.get("folderId");
   const name = formData.get("name");
   const category = formData.get("category");
   const encrypted = formData.get("encrypted") === "true";
@@ -55,15 +56,30 @@ export async function uploadDocument(formData: FormData) {
     throw new Error(`文件超过 ${MAX_FILE_SIZE / 1024 / 1024}MB 限制`);
   }
 
+  const folderId = typeof folderIdRaw === "string" && folderIdRaw ? folderIdRaw : null;
+
   // 校验归属对象存在
+  let folderName: string | null = null;
   if (matterId) {
     const matter = await prisma.matter.findUnique({
       where: { id: matterId, deletedAt: null },
       select: { id: true, status: true }
     });
     if (!matter) throw new Error("案件不存在");
-    // 归档后仅允许补传到 ARCHIVE 卷宗（uploadDocument 暂未带 folderId，等同全禁）
-    await assertDocumentWritable(matterId, { kind: "upload", folderName: null });
+
+    if (folderId) {
+      const folder = await prisma.documentFolder.findUnique({
+        where: { id: folderId },
+        select: { matterId: true, name: true }
+      });
+      if (!folder || folder.matterId !== matterId) {
+        throw new Error("目标卷宗与案件不匹配");
+      }
+      folderName = folder.name;
+    }
+
+    // 归档后仅允许补传到 ARCHIVE 卷宗（结案 / 归档），由 guard 判定
+    await assertDocumentWritable(matterId, { kind: "upload", folderName });
   }
   if (intakeId) {
     const intake = await prisma.intake.findUnique({
@@ -99,6 +115,7 @@ export async function uploadDocument(formData: FormData) {
       matterId,
       intakeId,
       procedureId: typeof procedureId === "string" && procedureId ? procedureId : null,
+      folderId,
       name,
       category: parsedCategory,
       path,

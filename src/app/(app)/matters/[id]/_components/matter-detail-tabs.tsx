@@ -380,11 +380,13 @@ export function MatterDetailTabs({
           {tab === "documents" && (
             <DocumentsPanel
               matterId={matter.id}
+              matterStatus={matter.status}
               documents={documents}
               procedures={matter.procedures.map((p) => ({
                 id: p.id,
                 label: p.customLabel ?? p.type
               }))}
+              folders={folders.map((f) => ({ id: f.id, name: f.name }))}
             />
           )}
           {tab === "folders" && (

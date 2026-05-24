@@ -90,11 +90,13 @@ export function ResourcesPanel({
       {sub === "documents" && (
         <DocumentsPanel
           matterId={matter.id}
+          matterStatus={matter.status}
           documents={documents}
           procedures={matter.procedures.map((p) => ({
             id: p.id,
             label: p.customLabel ?? p.type
           }))}
+          folders={[]}
         />
       )}
       {sub === "finance" && (
