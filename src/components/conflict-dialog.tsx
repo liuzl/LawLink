@@ -10,7 +10,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from "lucide-react";
 import type { ConflictSeverity } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ type HitResult = {
   reason: string;
 };
 
+type SameNameClient = { clientId: string; name: string };
+type IdMatchedClient = { clientId: string; name: string; idNumber: string };
+
 const severityStyle: Record<ConflictSeverity, { color: string; bg: string; label: string }> = {
   BLOCKING: { color: "#F87171", bg: "rgba(248,113,113,0.12)", label: "阻塞" },
   HIGH: { color: "#FB923C", bg: "rgba(251,146,60,0.12)", label: "高" },
@@ -58,11 +62,15 @@ export function ConflictDialog({
   const [isPending, startTransition] = useTransition();
   const [queries, setQueries] = useState<QueryRow[]>([{ name: "", idNumber: "" }]);
   const [results, setResults] = useState<HitResult[] | null>(null);
+  const [sameName, setSameName] = useState<SameNameClient[]>([]);
+  const [idMatched, setIdMatched] = useState<IdMatchedClient[]>([]);
   const [hasRun, setHasRun] = useState(false);
 
   function reset() {
     setQueries([{ name: "", idNumber: "" }]);
     setResults(null);
+    setSameName([]);
+    setIdMatched([]);
     setHasRun(false);
   }
 
@@ -79,9 +87,18 @@ export function ConflictDialog({
       try {
         const res = await runCheckAndSave({ queries: cleaned });
         setResults(res.hits);
+        setSameName(res.sameNameClients ?? []);
+        setIdMatched(res.idMatchedClients ?? []);
         setHasRun(true);
-        if (res.hits.length === 0) toast.success("未命中任何历史记录");
-        else toast.success(`命中 ${res.hits.length} 条，请审阅`);
+        const extra =
+          res.idMatchedClients?.length || res.sameNameClients?.length
+            ? `（同名 ${res.sameNameClients?.length ?? 0} · 证件号匹配 ${res.idMatchedClients?.length ?? 0}）`
+            : "";
+        if (res.hits.length === 0) {
+          toast.success(`未命中冲突${extra}`);
+        } else {
+          toast.success(`命中 ${res.hits.length} 条${extra}，请审阅`);
+        }
       } catch (err) {
         toast.error("检索失败", {
           description: err instanceof Error ? err.message : ""
@@ -198,6 +215,53 @@ export function ConflictDialog({
               </Button>
             </div>
           </section>
+
+          {/* 客户库同名（非冲突，仅提示） */}
+          {hasRun && sameName.length > 0 && (
+            <section className="rounded-md border border-[#5B8DEF]/30 bg-[#5B8DEF]/10 p-3">
+              <div className="flex items-center gap-2 text-xs text-[#5B8DEF]">
+                <Info className="h-3.5 w-3.5" />
+                客户库已有 {sameName.length} 个同名记录（仅提示，非冲突）
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {sameName.map((c) => (
+                  <Link
+                    key={c.clientId}
+                    href={`/clients/${c.clientId}`}
+                    onClick={() => onOpenChange(false)}
+                    className="inline-flex items-center gap-1 rounded border border-border bg-background/60 px-2 py-0.5 text-[11px] hover:border-primary/40 hover:text-primary"
+                  >
+                    {c.name}
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 身份证 / 信用代码精确匹配（强提示） */}
+          {hasRun && idMatched.length > 0 && (
+            <section className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                身份证 / 信用代码与客户库 {idMatched.length} 条记录精确匹配，请人工核对
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {idMatched.map((c) => (
+                  <Link
+                    key={c.clientId}
+                    href={`/clients/${c.clientId}`}
+                    onClick={() => onOpenChange(false)}
+                    className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300 hover:bg-amber-500/15"
+                  >
+                    {c.name}{" "}
+                    <span className="font-mono opacity-60">{c.idNumber}</span>
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 结果 */}
           {hasRun && (
