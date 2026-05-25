@@ -46,12 +46,14 @@ export function ArchiveWizardDialog({ matterId, open, onOpenChange }: Props) {
   const [completedAt, setCompletedAt] = useState<string>(new Date().toISOString().slice(0, 10));
   const [judgmentSummary, setJudgmentSummary] = useState("");
   const [summary, setSummary] = useState("");
+  const [summaryFromClose, setSummaryFromClose] = useState(false);
   const [forceWithMissing, setForceWithMissing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setSummaryFromClose(false);
     getArchivePrepData(matterId)
       .then((data) => {
         setChecklist(data.checklist);
@@ -63,6 +65,11 @@ export function ArchiveWizardDialog({ matterId, open, onOpenChange }: Props) {
         setChecked(initial);
         if (data.matter.closedAt) {
           setCompletedAt(data.matter.closedAt.toISOString().slice(0, 10));
+        }
+        // v0.11: 引用结案时已写过的小结，可编辑覆盖
+        if (data.existingSummary) {
+          setSummary(data.existingSummary);
+          setSummaryFromClose(true);
         }
       })
       .catch((err) => {
@@ -171,10 +178,21 @@ export function ArchiveWizardDialog({ matterId, open, onOpenChange }: Props) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">结案小结 *</Label>
+                  <div className="flex items-baseline justify-between">
+                    <Label className="text-xs">结案小结 *</Label>
+                    {summaryFromClose && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-primary">
+                        <Sparkles className="h-3 w-3" />
+                        已引用结案时填写的小结，可直接编辑
+                      </span>
+                    )}
+                  </div>
                   <Textarea
                     value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
+                    onChange={(e) => {
+                      setSummary(e.target.value);
+                      setSummaryFromClose(false);
+                    }}
                     placeholder="案件办理过程概述、关键节点、得失复盘等"
                     rows={3}
                   />

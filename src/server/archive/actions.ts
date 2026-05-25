@@ -180,9 +180,18 @@ export async function getArchivePrepData(matterId: string) {
   if (!matter) throw new Error("案件不存在");
 
   const checklist = checklistForCategory(matter.category);
+
+  // v0.11: 取最近一次结案事件的 content 作为预填小结
+  const lastCloseEvent = await prisma.timelineEvent.findFirst({
+    where: { matterId, eventType: "MATTER_CLOSED" },
+    orderBy: { occurredAt: "desc" },
+    select: { content: true }
+  });
+
   return {
     matter,
-    checklist
+    checklist,
+    existingSummary: lastCloseEvent?.content ?? null
   };
 }
 
