@@ -24,14 +24,16 @@ export type MatterRow = Matter & {
 };
 
 /**
- * v0.16: 案件列表统一两行布局（divide-y 列表）
- * 行 1：编号 · 标题 · 类别 · 状态 · (右) 主办律师
- * 行 2：委托人 · 对方 · 三人 · 案由 · 程序+案号 · 收案 · 标的
+ * v0.17: 案件列表卡片 - 视觉收敛
+ * - 字号 2 档（15px 标题 / 12.5px meta）
+ * - 颜色：仅左侧 3px 竖条按类别染色；状态用同一灰底 chip + 点
+ * - label 统一灰色，无各种 dot 颜色
+ * - 编号移到行 2（不再首屏粗暴展示）
  */
 export function MattersTable({ items }: { items: MatterRow[] }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-border bg-card flex flex-col items-center gap-2 py-20 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card py-20 text-center">
         <div className="text-base text-muted-foreground">没有匹配的案件</div>
         <div className="text-xs text-muted-foreground/70">
           点击右上角 <span className="text-foreground/80">新建收案</span> 开始
@@ -41,13 +43,11 @@ export function MattersTable({ items }: { items: MatterRow[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card">
-      <ul className="divide-y divide-border">
-        {items.map((m) => (
-          <MatterListRow key={m.id} m={m} />
-        ))}
-      </ul>
-    </div>
+    <ul className="space-y-2.5">
+      {items.map((m) => (
+        <MatterListRow key={m.id} m={m} />
+      ))}
+    </ul>
   );
 }
 
@@ -63,142 +63,131 @@ function MatterListRow({ m }: { m: MatterRow }) {
   const hasPendingArchive = (m.archiveRecords?.length ?? 0) > 0;
 
   return (
-    <Link
-      href={`/matters/${m.id}`}
-      className="group block px-4 py-3 transition-colors hover:bg-muted/40"
-    >
-      {/* 行 1：编号 + 标题 + 类别 + 状态 + 右侧主办 */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-mono text-[11px] tabular text-muted-foreground">
-          {m.internalCode}
-        </span>
-        <span className="text-[14px] font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
-          {m.title}
-        </span>
+    <li>
+      <Link
+        href={`/matters/${m.id}`}
+        className="group relative block overflow-hidden rounded-lg border border-border bg-card py-4 pl-5 pr-5 transition-colors hover:border-foreground/30"
+      >
+        {/* 左侧 3px category accent 竖条 - 唯一彩色装饰 */}
         <span
-          className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0 text-[10px]"
-          style={{ background: `${categoryColor}18`, color: categoryColor }}
-        >
-          <span className="h-1 w-1 rounded-full" style={{ background: categoryColor }} />
-          {matterCategoryLabel[m.category]}
-        </span>
-        {hasPendingArchive ? (
-          <span className="inline-flex h-5 items-center rounded-full border border-purple-500/30 bg-purple-500/15 px-2 text-[10px] font-medium text-purple-700">
-            归档中
-          </span>
-        ) : (
-          <StatusChip status={m.status} />
-        )}
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[3px]"
+          style={{ background: categoryColor }}
+        />
 
-        <div className="ml-auto flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-          <span>主办</span>
-          {m.owner ? (
-            <>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] text-primary">
-                {m.owner.name.charAt(0)}
+        {/* 行 1：标题 + 状态 chip + 右侧主办 */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-[15px] font-medium text-foreground transition-colors group-hover:text-primary">
+            {m.title}
+          </span>
+          <StatusChip status={m.status} pendingArchive={hasPendingArchive} />
+
+          <div className="ml-auto flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            <span>主办</span>
+            {m.owner ? (
+              <>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10.5px] font-medium text-foreground/70">
+                  {m.owner.name.charAt(0)}
+                </span>
+                <span className="text-foreground/80">{m.owner.name}</span>
+              </>
+            ) : (
+              <span>—</span>
+            )}
+          </div>
+        </div>
+
+        {/* 行 2：所有 meta — 统一字号 / label 统一 muted / 仅 mono 字体区分数据 */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[12.5px] text-muted-foreground">
+          <Field label="编号">
+            <span className="font-mono">{m.internalCode}</span>
+          </Field>
+          <Field label="类型">{matterCategoryLabel[m.category]}</Field>
+          <Field label="委托">{m.primaryClient?.name ?? "—"}</Field>
+          {opposing.length > 0 && (
+            <Field label="对方">
+              {opposing
+                .map(
+                  (p) =>
+                    `${p.name}${p.standing ? `（${litigationStandingLabel[p.standing]}）` : ""}`
+                )
+                .join("、")}
+            </Field>
+          )}
+          {third.length > 0 && (
+            <Field label="第三人">{third.map((p) => p.name).join("、")}</Field>
+          )}
+          {causeText && <Field label="案由">{causeText}</Field>}
+          {procLabel && (
+            <Field label="程序">
+              {procLabel}
+              {current?.caseNumber && (
+                <span className="ml-1.5 font-mono text-muted-foreground">
+                  {current.caseNumber}
+                </span>
+              )}
+            </Field>
+          )}
+          {m.intakeDate && (
+            <Field label="收案">
+              <span className="font-mono">
+                {new Date(m.intakeDate).toLocaleDateString("zh-CN")}
               </span>
-              <span className="text-foreground/85">{m.owner.name}</span>
-            </>
-          ) : (
-            <span>—</span>
+            </Field>
+          )}
+          {m.claimAmount && (
+            <Field label="标的">
+              <span className="font-mono text-foreground/85">
+                {formatCurrency(Number(m.claimAmount), { compact: true })}
+              </span>
+            </Field>
           )}
         </div>
-      </div>
-
-      {/* 行 2：客户 / 对方 / 案由 / 程序 / 收案 / 标的 */}
-      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-        <Field label="委托" tone="primary">
-          {m.primaryClient?.name ?? "—"}
-        </Field>
-        {opposing.length > 0 && (
-          <Field label="对方" tone="warn">
-            {opposing
-              .map(
-                (p) =>
-                  `${p.name}${p.standing ? `（${litigationStandingLabel[p.standing]}）` : ""}`
-              )
-              .join("、")}
-          </Field>
-        )}
-        {third.length > 0 && (
-          <Field label="三人" tone="purple">
-            {third.map((p) => p.name).join("、")}
-          </Field>
-        )}
-        {causeText && <Field label="案由">{causeText}</Field>}
-        {procLabel && (
-          <Field label="程序">
-            {procLabel}
-            {current?.caseNumber && (
-              <span className="ml-1 font-mono text-[10.5px] text-muted-foreground">
-                · {current.caseNumber}
-              </span>
-            )}
-          </Field>
-        )}
-        {m.intakeDate && (
-          <Field label="收案">
-            <span className="font-mono tabular">
-              {new Date(m.intakeDate).toLocaleDateString("zh-CN")}
-            </span>
-          </Field>
-        )}
-        {m.claimAmount && (
-          <Field label="标的">
-            <span className="font-mono tabular font-medium text-foreground/85">
-              {formatCurrency(Number(m.claimAmount), { compact: true })}
-            </span>
-          </Field>
-        )}
-      </div>
-    </Link>
+      </Link>
+    </li>
   );
 }
 
 function Field({
   label,
-  tone,
   children
 }: {
   label: string;
-  tone?: "primary" | "warn" | "purple";
   children: React.ReactNode;
 }) {
-  const dot =
-    tone === "primary"
-      ? "#5B8DEF"
-      : tone === "warn"
-        ? "#FB923C"
-        : tone === "purple"
-          ? "#9B7BF7"
-          : null;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground/70">
-        {dot && <span className="h-1 w-1 rounded-full" style={{ background: dot }} />}
-        {label}
-      </span>
+      <span className="text-[11px] text-muted-foreground/70">{label}</span>
       <span className="text-foreground/90">{children}</span>
     </span>
   );
 }
 
-function StatusChip({ status }: { status: MatterRow["status"] }) {
-  const tone: Record<MatterRow["status"], string> = {
-    PENDING_ACCEPTANCE: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-    IN_PROGRESS: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
-    ON_HOLD: "bg-slate-400/15 text-slate-700 border-slate-400/30",
-    CLOSED: "bg-blue-500/15 text-blue-700 border-blue-500/30",
-    ARCHIVED: "bg-purple-500/15 text-purple-700 border-purple-500/30"
+function StatusChip({
+  status,
+  pendingArchive
+}: {
+  status: MatterRow["status"];
+  pendingArchive: boolean;
+}) {
+  // v0.17: 状态 chip 统一灰底 + dot 颜色区分（仅用 5 个 dot 色）
+  const dotColor: Record<MatterRow["status"], string> = {
+    PENDING_ACCEPTANCE: "#f59e0b", // amber
+    IN_PROGRESS: "#10b981", // emerald
+    ON_HOLD: "#94a3b8", // slate
+    CLOSED: "#3b82f6", // blue
+    ARCHIVED: "#8b5cf6" // purple
   };
+  const label = pendingArchive ? "归档中" : matterStatusLabel[status];
+  const dot = pendingArchive ? "#8b5cf6" : dotColor[status];
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium",
-        tone[status]
+        "inline-flex h-5 items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2 text-[11px] text-foreground/75"
       )}
     >
-      {matterStatusLabel[status]}
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: dot }} />
+      {label}
     </span>
   );
 }
