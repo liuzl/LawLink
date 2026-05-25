@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Calendar as CalendarIcon, FileText, User, Scale, Building2 } from "lucide-react";
 import type { IntakeStatus, ConflictSeverity } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
 import { matterCategoryLabel, matterCategoryColor, intakeStatusLabel } from "@/lib/enums";
+import { cn } from "@/lib/utils";
 
 export type IntakeRow = {
   id: string;
@@ -28,136 +28,174 @@ function getHighestSeverity(severities: ConflictSeverity[]): ConflictSeverity | 
   return max;
 }
 
-export function IntakesTable({ items }: { items: IntakeRow[] }) {
+/**
+ * v0.13: 待审批 / 待补正 收案卡片列表（与 MattersTable 卡片样式保持一致）
+ */
+export function IntakesTable({
+  items,
+  kind = "intake"
+}: {
+  items: IntakeRow[];
+  kind?: "intake" | "revision";
+}) {
   if (items.length === 0) {
     return (
-      <div className="bg-muted/50 border border-border rounded-md flex flex-col items-center gap-2 py-20 text-center">
+      <div className="bg-muted/30 border border-border rounded-md flex flex-col items-center gap-2 py-20 text-center">
         <div className="text-base text-muted-foreground">
-          暂无待审批收案
+          {kind === "revision" ? "暂无待补正收案" : "暂无待审批收案"}
         </div>
         <div className="text-xs text-muted-subtle">
-          点击右上角{" "}
-          <span className="text-foreground/80">新建收案</span> 开始
+          {kind === "revision"
+            ? "在 待审批 中拒绝某条收案后，会出现在这里供补正后重新提交"
+            : "点击右上角"}{" "}
+          {kind === "intake" && <span className="text-foreground/80">新建收案</span>}
         </div>
       </div>
     );
   }
-
   return (
-    <div className="ll-surface overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr
-            className="border-b text-left text-[0.6rem] text-muted-foreground/80"
-          >
-            <th className="px-5 py-2.5 font-semibold">案件标题</th>
-            <th className="px-4 py-2.5 font-semibold">类别</th>
-            <th className="px-4 py-2.5 font-semibold">委托方</th>
-            <th className="px-4 py-2.5 font-semibold">相对方</th>
-            <th className="px-4 py-2.5 font-semibold">利益冲突</th>
-            <th className="px-4 py-2.5 font-semibold">状态</th>
-            <th className="px-5 py-2.5 text-right font-semibold">咨询日</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, idx) => {
-            const sev = it.conflictChecks[0]
-              ? getHighestSeverity(it.conflictChecks[0].hits.map((h) => h.severity))
-              : null;
-            return (
-              <tr
-                key={it.id}
-                className="group transition-colors hover:bg-muted/30"
-                style={
-                  idx > 0 ? { borderTop: "1px solid hsl(var(--border))" } : undefined
-                }
-              >
-                <td className="px-5 py-2.5">
-                  <Link href={`/intakes/${it.id}`} className="block">
-                    <div className="text-[1.05rem] font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
-                      {it.title}
-                    </div>
-                    {it.cause && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {it.cause.name}
-                      </div>
-                    )}
-                  </Link>
-                </td>
-                <td className="px-4 py-2.5">
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px]"
-                    style={{
-                      borderColor: `${matterCategoryColor[it.category]}50`,
-                      color: matterCategoryColor[it.category],
-                      background: `${matterCategoryColor[it.category]}10`
-                    }}
-                  >
-                    <span
-                      className="h-1 w-1 rounded-full"
-                      style={{ backgroundColor: matterCategoryColor[it.category] }}
-                    />
-                    {matterCategoryLabel[it.category]}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-[0.875rem] text-foreground/90">
-                  {it.client ? (
-                    it.client.name
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-[0.875rem] text-muted-foreground">
-                  {it.parties.length > 0 ? (
-                    <span className="line-clamp-1">
-                      {it.parties.map((p) => p.name).join("、")}
-                    </span>
-                  ) : (
-                    <span className="text-xs">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
-                  <SeverityBadge severity={sev} />
-                </td>
-                <td className="px-4 py-2.5">
-                  <Badge
-                    variant="outline"
-                    className="border-border bg-muted/30 text-[10px] font-normal"
-                  >
-                    {intakeStatusLabel[it.status]}
-                  </Badge>
-                </td>
-                <td className="px-5 py-2.5 text-right font-mono text-[11px] text-muted-foreground tabular">
-                  {new Date(it.receivedAt).toLocaleDateString("zh-CN")}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {items.map((it) => (
+        <IntakeCard key={it.id} intake={it} kind={kind} />
+      ))}
     </div>
   );
 }
 
-function SeverityBadge({ severity }: { severity: ConflictSeverity | null }) {
-  if (!severity)
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-        未检索
-      </span>
-    );
-
-  const meta: Record<ConflictSeverity, { color: string; label: string; Icon: typeof AlertTriangle }> = {
-    BLOCKING: { color: "text-rose-600", label: "阻塞", Icon: AlertTriangle },
-    HIGH: { color: "text-orange-500", label: "高", Icon: AlertTriangle },
-    MEDIUM: { color: "text-amber-500", label: "中", Icon: AlertTriangle },
-    LOW: { color: "text-emerald-600", label: "低", Icon: CheckCircle2 }
-  };
-  const { color, label, Icon } = meta[severity];
+function IntakeCard({
+  intake,
+  kind
+}: {
+  intake: IntakeRow;
+  kind: "intake" | "revision";
+}) {
+  const accent = matterCategoryColor[intake.category];
+  const sev = intake.conflictChecks[0]
+    ? getHighestSeverity(intake.conflictChecks[0].hits.map((h) => h.severity))
+    : null;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs ${color}`}>
-      <Icon className="h-3 w-3" strokeWidth={2} />
+    <Link
+      href={`/intakes/${intake.id}`}
+      className="group block rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
+    >
+      <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-4">
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-white sm:h-[52px] sm:w-[52px]"
+          style={{ backgroundColor: accent }}
+        >
+          <Scale className="h-5 w-5" strokeWidth={2} />
+        </div>
+
+        <div className="min-w-0 space-y-3">
+          {/* row 1 */}
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-6">
+            <div className="flex min-w-0 items-baseline gap-3">
+              <span className="truncate text-[16px] font-semibold text-foreground sm:text-[18px]">
+                {intake.title || "（未命名）"}
+              </span>
+            </div>
+            <div className="flex items-center justify-end gap-2 text-[12.5px]">
+              {sev && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                    sev === "BLOCKING" || sev === "HIGH"
+                      ? "border-red-500/30 bg-red-500/10 text-red-700"
+                      : "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                  )}
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  冲突 {sev}
+                </span>
+              )}
+              <IntakeStatusPill status={intake.status} kind={kind} />
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* row 2 */}
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
+              <MetaItem icon={<CalendarIcon className="h-3.5 w-3.5" />}>
+                <span className="mr-1">咨询</span>
+                <span className="text-foreground/80">
+                  {new Date(intake.receivedAt).toLocaleDateString("zh-CN")}
+                </span>
+              </MetaItem>
+              <MetaItem icon={<FileText className="h-3.5 w-3.5" />}>
+                <span className="mr-1">案由</span>
+                <span className="text-foreground/80">{intake.cause?.name ?? "—"}</span>
+              </MetaItem>
+              <MetaItem icon={<Building2 className="h-3.5 w-3.5" />}>
+                <span className="mr-1">类型</span>
+                <span className="text-foreground/80">{matterCategoryLabel[intake.category]}</span>
+              </MetaItem>
+            </div>
+            <div className="text-right text-[12.5px]">
+              <span className="mr-2 text-muted-foreground">委托人</span>
+              <span className="font-medium text-foreground/90">
+                {intake.client?.name ?? "—"}
+              </span>
+            </div>
+          </div>
+
+          {/* row 3: 对方（如有） */}
+          {intake.parties.length > 0 && (
+            <>
+              <div className="h-px bg-border" />
+              <div className="text-[12.5px]">
+                <MetaItem icon={<User className="h-3.5 w-3.5" />}>
+                  <span className="mr-1 text-muted-foreground">相对方</span>
+                  <span className="text-foreground/90">
+                    {intake.parties.map((p) => p.name).join("、")}
+                  </span>
+                </MetaItem>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function MetaItem({
+  icon,
+  children
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-muted-foreground/70">{icon}</span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function IntakeStatusPill({
+  status,
+  kind
+}: {
+  status: IntakeStatus;
+  kind: "intake" | "revision";
+}) {
+  const tone =
+    kind === "revision"
+      ? "bg-orange-500 text-orange-50"
+      : status === "PENDING_CONFIRMATION"
+        ? "bg-amber-500 text-amber-50"
+        : "bg-emerald-600 text-emerald-50";
+  const label = kind === "revision" ? "待补正" : intakeStatusLabel[status] ?? status;
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center rounded-full px-3 text-[12px] font-semibold",
+        tone
+      )}
+    >
       {label}
     </span>
   );

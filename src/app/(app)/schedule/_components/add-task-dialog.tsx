@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +44,8 @@ export function AddTaskDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<0 | 1 | 2>(0);
+  const [allDay, setAllDay] = useState(false);
+  const [time, setTime] = useState("09:00");
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +53,8 @@ export function AddTaskDialog({
     setTitle("");
     setDescription("");
     setPriority(0);
+    setAllDay(false);
+    setTime("09:00");
   }, [open]);
 
   function submit() {
@@ -67,13 +71,24 @@ export function AddTaskDialog({
       return;
     }
 
+    // 合成 dueAt：全天 → 23:59；有时间 → 解析 HH:MM
+    const dueAt = new Date(date);
+    if (allDay) {
+      dueAt.setHours(23, 59, 0, 0);
+    } else {
+      const [hh, mm] = time.split(":").map(Number);
+      if (Number.isFinite(hh) && Number.isFinite(mm)) {
+        dueAt.setHours(hh, mm, 0, 0);
+      }
+    }
+
     startTransition(async () => {
       try {
         await createTask({
           matterId,
           title: title.trim(),
           description,
-          dueAt: date,
+          dueAt,
           priority,
           assigneeId: "",
           stageId: ""
@@ -140,6 +155,32 @@ export function AddTaskDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1 text-xs">
+              <Clock className="h-3 w-3" />
+              时间
+            </Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                step={300}
+                value={time}
+                disabled={allDay}
+                onChange={(e) => setTime(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 font-mono text-sm tabular disabled:opacity-50"
+              />
+              <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={(e) => setAllDay(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                全天
+              </label>
+            </div>
           </div>
 
           <div className="space-y-1.5">

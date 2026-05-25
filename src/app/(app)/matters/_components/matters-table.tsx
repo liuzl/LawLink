@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import type { Matter, PartyRole, LitigationStanding, Prisma } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
+import {
+  Calendar as CalendarIcon,
+  FileText as FileTextIcon,
+  Building2,
+  User,
+  Banknote,
+  Scale
+} from "lucide-react";
 import {
   matterCategoryLabel,
   matterCategoryColor,
@@ -23,6 +30,13 @@ export type MatterRow = Matter & {
   intakeDate: Date | null;
 };
 
+/**
+ * v0.13: 案件列表卡片样式（参考用户提供的 case-list-single-card-style.html）
+ * 三行布局：
+ * - 第一行：标题 + 系统编号 | 主办律师
+ * - 第二行：收案时间 / 案由 / 管辖机构 | 代理程序
+ * - 第三行：我方客户/地位 / 标的额 | 案件状态 pill
+ */
 export function MattersTable({ items }: { items: MatterRow[] }) {
   if (items.length === 0) {
     return (
@@ -36,180 +50,163 @@ export function MattersTable({ items }: { items: MatterRow[] }) {
   }
 
   return (
-    <div className="bg-card rounded-md border border-border overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-[12.5px]">
-          <thead>
-            <tr
-              className="border-b border-border text-left text-[10px] tracking-wider text-muted-foreground/80"
-            >
-              <th className="px-4 py-2.5 font-medium">案件</th>
-              <th className="px-3 py-2.5 font-medium">类别·状态</th>
-              <th className="px-3 py-2.5 font-medium">当事人</th>
-              <th className="px-3 py-2.5 font-medium">主办</th>
-              <th className="px-3 py-2.5 font-medium">当前程序 / 案号</th>
-              <th className="px-3 py-2.5 text-right font-medium">收案 / 标的</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((m, idx) => (
-              <MatterRowTr key={m.id} m={m} first={idx === 0} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-3">
+      {items.map((m) => (
+        <MatterCard key={m.id} matter={m} />
+      ))}
     </div>
   );
 }
 
-function MatterRowTr({ m, first }: { m: MatterRow; first: boolean }) {
-  const current = m.procedures[0];
-  const opposing = m.parties.filter((p) => p.role === "OPPOSING_PARTY");
-  const third = m.parties.filter((p) => p.role === "THIRD_PARTY");
-  const categoryColor = matterCategoryColor[m.category];
-  const causeText = m.cause?.name ?? m.causeFreeText ?? null;
+function MatterCard({ matter }: { matter: MatterRow }) {
+  const firstProc = matter.procedures[0];
+  const procLabel = firstProc
+    ? procedureTypeLabel[firstProc.type as keyof typeof procedureTypeLabel] ?? firstProc.type
+    : "—";
+  const caseNumber = firstProc?.caseNumber ?? null;
+  const ourSide = matter.parties.find((p) => p.role === "CLIENT_PARTY");
+  const ourStanding = (matter.ourStanding ?? ourSide?.standing) as LitigationStanding | null;
+  const standingLabel = ourStanding ? litigationStandingLabel[ourStanding] : null;
+  const accent = matterCategoryColor[matter.category];
 
   return (
-    <tr
+    <Link
+      href={`/matters/${matter.id}`}
+      className="group block rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
+    >
+      <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-4">
+        {/* 图标 */}
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-white sm:h-[52px] sm:w-[52px]"
+          style={{ backgroundColor: accent }}
+        >
+          <Scale className="h-5 w-5" strokeWidth={2} />
+        </div>
+
+        <div className="min-w-0 space-y-3">
+          {/* row 1：标题 + 系统编号 | 主办律师 */}
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-6">
+            <div className="flex min-w-0 items-baseline gap-3">
+              <span className="truncate text-[16px] font-semibold text-foreground sm:text-[18px]">
+                {matter.title}
+              </span>
+              <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                {matter.internalCode}
+              </span>
+            </div>
+            <div className="text-right text-[12.5px]">
+              <span className="mr-2 text-muted-foreground">主办律师</span>
+              {matter.owner ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold"
+                    style={{ background: `${accent}15`, color: accent }}
+                  >
+                    {matter.owner.name.charAt(0)}
+                  </span>
+                  <span className="font-medium text-foreground/90">{matter.owner.name}</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* row 2：meta + 代理程序 */}
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
+              <MetaItem icon={<CalendarIcon className="h-3.5 w-3.5" />}>
+                <span className="mr-1">收案</span>
+                <span className="text-foreground/80">
+                  {matter.intakeDate
+                    ? new Date(matter.intakeDate).toLocaleDateString("zh-CN")
+                    : "—"}
+                </span>
+              </MetaItem>
+              <MetaItem icon={<FileTextIcon className="h-3.5 w-3.5" />}>
+                <span className="mr-1">案由</span>
+                <span className="text-foreground/80">
+                  {matter.cause?.name ?? matter.causeFreeText ?? "—"}
+                </span>
+              </MetaItem>
+              <MetaItem icon={<Building2 className="h-3.5 w-3.5" />}>
+                <span className="mr-1">类型</span>
+                <span className="text-foreground/80">
+                  {matterCategoryLabel[matter.category]}
+                </span>
+              </MetaItem>
+            </div>
+            <div className="text-right text-[12.5px]">
+              <span className="mr-2 text-muted-foreground">代理程序</span>
+              <span className="font-medium text-foreground/90">{procLabel}</span>
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* row 3：客户/标的 + 状态 */}
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
+              <MetaItem icon={<User className="h-3.5 w-3.5" />}>
+                <span className="mr-1 text-muted-foreground">委托人 / 地位</span>
+                <span className="text-foreground/90">
+                  {matter.primaryClient?.name ?? "—"}
+                  {standingLabel ? `，${standingLabel}` : ""}
+                </span>
+              </MetaItem>
+              <MetaItem icon={<Banknote className="h-3.5 w-3.5" />}>
+                <span className="mr-1 text-muted-foreground">标的额</span>
+                <span className="font-mono text-[13px] font-semibold text-foreground tabular">
+                  {matter.claimAmount
+                    ? `¥${formatCurrency(Number(matter.claimAmount), { compact: true })}`
+                    : "—"}
+                </span>
+              </MetaItem>
+            </div>
+            <div className="flex items-center justify-end gap-2 text-[12.5px]">
+              <span className="text-muted-foreground">状态</span>
+              <StatusPill status={matter.status} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function MetaItem({
+  icon,
+  children
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-muted-foreground/70">{icon}</span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function StatusPill({ status }: { status: MatterRow["status"] }) {
+  const map: Record<MatterRow["status"], string> = {
+    PENDING_ACCEPTANCE: "bg-amber-500 text-amber-50",
+    IN_PROGRESS: "bg-emerald-600 text-emerald-50",
+    ON_HOLD: "bg-slate-500 text-slate-50",
+    CLOSED: "bg-blue-600 text-blue-50",
+    ARCHIVED: "bg-purple-600 text-purple-50"
+  };
+  return (
+    <span
       className={cn(
-        "group transition-colors hover:bg-muted/30",
-        !first && "border-t border-border"
+        "inline-flex h-6 items-center rounded-full px-3 text-[12px] font-semibold",
+        map[status]
       )}
     >
-      {/* 案件：编号 + 案件名 + 案由 */}
-      <td className="px-4 py-3 align-top">
-        <Link href={`/matters/${m.id}`} className="block">
-          <div className="font-mono text-[10.5px] tracking-wider text-muted-foreground tabular">
-            {m.internalCode}
-          </div>
-          <div className="mt-0.5 text-[14px] font-medium italic leading-snug text-foreground transition-colors group-hover:text-primary">
-            {m.title}
-          </div>
-          {causeText && (
-            <div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
-              {causeText}
-            </div>
-          )}
-        </Link>
-      </td>
-
-      {/* 类别 + 状态 */}
-      <td className="px-3 py-3 align-top">
-        <div className="flex flex-col gap-1">
-          <span
-            className="inline-flex w-fit items-center gap-1 rounded-sm px-2 py-0.5 text-[10px]"
-            style={{ background: `${categoryColor}14`, color: categoryColor }}
-          >
-            <span className="h-1 w-1 rounded-full" style={{ background: categoryColor }} />
-            {matterCategoryLabel[m.category]}
-          </span>
-          <Badge
-            variant="outline"
-            className="w-fit border-border px-1.5 py-0 text-[10px] font-normal"
-          >
-            {matterStatusLabel[m.status]}
-          </Badge>
-        </div>
-      </td>
-
-      {/* 当事人：委托 / 对方 / 第三人 三行紧凑 */}
-      <td className="px-3 py-3 align-top text-[11.5px]">
-        <PartyLine
-          dot="#5B8DEF"
-          label="委托"
-          text={m.primaryClient?.name ?? "—"}
-        />
-        {opposing.length > 0 && (
-          <PartyLine
-            dot="#FB923C"
-            label="对方"
-            text={opposing
-              .map(
-                (p) =>
-                  `${p.name}${p.standing ? `(${litigationStandingLabel[p.standing]})` : ""}`
-              )
-              .join("、")}
-          />
-        )}
-        {third.length > 0 && (
-          <PartyLine
-            dot="#9B7BF7"
-            label="三人"
-            text={third.map((p) => p.name).join("、")}
-          />
-        )}
-      </td>
-
-      {/* 主办律师 */}
-      <td className="px-3 py-3 align-top text-[11.5px]">
-        {m.owner ? (
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] text-primary">
-              {m.owner.name.charAt(0)}
-            </span>
-            <span className="truncate text-foreground/85">{m.owner.name}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </td>
-
-      {/* 当前程序 / 案号 */}
-      <td className="px-3 py-3 align-top text-[11.5px]">
-        {current ? (
-          <div>
-            <div className="text-[12.5px] italic text-foreground/85">
-              {procedureTypeLabel[current.type as keyof typeof procedureTypeLabel]}
-            </div>
-            {current.caseNumber ? (
-              <div className="mt-0.5 font-mono text-[10.5px] tabular text-muted-foreground">
-                {current.caseNumber}
-              </div>
-            ) : (
-              <div className="mt-0.5 text-[10px] italic text-muted-foreground/60">未立案</div>
-            )}
-            {m._count.procedures > 1 && (
-              <div className="mt-0.5 text-[10px] text-muted-foreground">
-                共 {m._count.procedures} 个程序
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </td>
-
-      {/* 收案日 / 标的 */}
-      <td className="px-3 py-3 align-top text-right text-[11.5px]">
-        {m.intakeDate ? (
-          <div className="font-mono text-[10.5px] tabular text-muted-foreground">
-            {new Date(m.intakeDate).toLocaleDateString("zh-CN")}
-          </div>
-        ) : (
-          <div className="text-[10px] italic text-muted-foreground/60">未收案</div>
-        )}
-        {m.claimAmount ? (
-          <div className={cn("mt-0.5 font-mono tabular text-[12px] font-medium text-foreground/85")}>
-            {formatCurrency(Number(m.claimAmount), { compact: true })}
-          </div>
-        ) : (
-          <div className="mt-0.5 text-[10px] italic text-muted-foreground/60">无标的</div>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-function PartyLine({ dot, label, text }: { dot: string; label: string; text: string }) {
-  return (
-    <div className="flex items-baseline gap-1.5 leading-tight">
-      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground/70">
-        <span className="h-1 w-1 rounded-full" style={{ background: dot }} />
-        {label}
-      </span>
-      <span className="line-clamp-1 text-foreground/85" title={text}>
-        {text}
-      </span>
-    </div>
+      {matterStatusLabel[status]}
+    </span>
   );
 }

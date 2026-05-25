@@ -5,10 +5,10 @@ import { listActiveColleagues } from "@/server/users/actions";
 import { MattersView } from "./_components/matters-view";
 import type { MatterCategory } from "@prisma/client";
 
-export type MattersTab = "intake" | "active" | "closed";
+export type MattersTab = "intake" | "active" | "archived" | "revision";
 
 function resolveTab(input?: string): MattersTab {
-  if (input === "intake" || input === "closed") return input;
+  if (input === "intake" || input === "archived" || input === "revision") return input;
   return "active";
 }
 
@@ -32,35 +32,34 @@ export default async function MattersPage({ searchParams }: Props) {
     listActiveColleagues()
   ]);
 
-  if (tab === "intake") {
-    // 待审批：直接看 Intake（status ∈ INTAKE / PENDING_CONFIRMATION）
+  if (tab === "intake" || tab === "revision") {
+    // 待审批 / 待补正：从 Intake 表筛
     const intakes = await listIntakes({
       search: searchParams.search,
-      // 不限单一 status，由列表层显示全部未转化/未拒绝
       page,
       pageSize: 30
     });
+    const statusFilter = (i: { status: string }) =>
+      tab === "intake"
+        ? i.status === "INTAKE" || i.status === "PENDING_CONFIRMATION"
+        : i.status === "DECLINED";
     return (
       <MattersView
         tab={tab}
         intakeData={{
-          items: intakes.items
-            .filter((i) => i.status === "INTAKE" || i.status === "PENDING_CONFIRMATION")
-            .map((i) => ({
-              id: i.id,
-              title: i.title,
-              category: i.category,
-              status: i.status,
-              receivedAt: i.receivedAt,
-              client: i.client ? { id: i.client.id, name: i.client.name } : null,
-              cause: i.cause,
-              parties: i.parties,
-              conflictChecks: i.conflictChecks,
-              matter: i.matter
-            })),
-          total: intakes.items.filter(
-            (i) => i.status === "INTAKE" || i.status === "PENDING_CONFIRMATION"
-          ).length
+          items: intakes.items.filter(statusFilter).map((i) => ({
+            id: i.id,
+            title: i.title,
+            category: i.category,
+            status: i.status,
+            receivedAt: i.receivedAt,
+            client: i.client ? { id: i.client.id, name: i.client.name } : null,
+            cause: i.cause,
+            parties: i.parties,
+            conflictChecks: i.conflictChecks,
+            matter: i.matter
+          })),
+          total: intakes.items.filter(statusFilter).length
         }}
         clientOptions={clientsResponse.items.map((c) => ({
           id: c.id,
@@ -77,10 +76,10 @@ export default async function MattersPage({ searchParams }: Props) {
     );
   }
 
-  // active / closed：查 Matter 表
+  // active / archived：查 Matter 表
   const statusGroup =
-    tab === "closed"
-      ? { statusIn: ["CLOSED" as const, "ARCHIVED" as const] }
+    tab === "archived"
+      ? { statusIn: ["ARCHIVED" as const] }
       : { statusNotIn: ["CLOSED" as const, "ARCHIVED" as const] };
 
   const matters = await listMatters({

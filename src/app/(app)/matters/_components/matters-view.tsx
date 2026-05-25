@@ -3,7 +3,7 @@
 import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Search, X, Clock, CheckCircle2, Archive } from "lucide-react";
+import { Plus, Search, X, Clock, CheckCircle2, Archive, AlertCircle } from "lucide-react";
 import type { MatterCategory, ClientType, UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { IntakesTable, type IntakeRow } from "./intakes-table";
 export type ClientOption = { id: string; name: string; type: ClientType };
 export type ColleagueOption = { id: string; name: string; role: UserRole };
 
-type Tab = "intake" | "active" | "closed";
+type Tab = "intake" | "active" | "archived" | "revision";
 
 type Props = {
   tab: Tab;
@@ -45,7 +45,8 @@ const ALL_CATEGORIES: (MatterCategory | "ALL")[] = [
 const TABS: { key: Tab; label: string; icon: typeof Clock }[] = [
   { key: "intake", label: "待审批", icon: Clock },
   { key: "active", label: "进行中", icon: CheckCircle2 },
-  { key: "closed", label: "已结案归档", icon: Archive }
+  { key: "revision", label: "待补正", icon: AlertCircle },
+  { key: "archived", label: "已归档", icon: Archive }
 ];
 
 export function MattersView({
@@ -109,9 +110,10 @@ export function MattersView({
     );
   }
 
+  const isIntakeStyle = tab === "intake" || tab === "revision";
   const hasFilters = search || category !== "ALL";
   const total =
-    tab === "intake" ? (intakeData?.total ?? 0) : (matterData?.total ?? 0);
+    isIntakeStyle ? (intakeData?.total ?? 0) : (matterData?.total ?? 0);
 
   return (
     <motion.div
@@ -191,7 +193,7 @@ export function MattersView({
             onChange={(e) => setSearch(e.target.value)}
             onBlur={applyFilters}
             placeholder={
-              tab === "intake"
+              isIntakeStyle
                 ? "搜索标题 / 客户 / 描述"
                 : "搜索案件名称 / 编号 / 客户"
             }
@@ -199,7 +201,7 @@ export function MattersView({
           />
         </form>
 
-        {tab !== "intake" && (
+        {!isIntakeStyle && (
           <RadioChips
             size="sm"
             items={ALL_CATEGORIES.map((c) => ({
@@ -224,8 +226,8 @@ export function MattersView({
         )}
       </div>
 
-      {tab === "intake" ? (
-        <IntakesTable items={intakeData?.items ?? []} />
+      {isIntakeStyle ? (
+        <IntakesTable items={intakeData?.items ?? []} kind={tab as "intake" | "revision"} />
       ) : (
         <MattersTable items={matterData?.items ?? []} />
       )}
