@@ -162,18 +162,9 @@ export function CaseListCard({
               )}
               <StatusChip label={status.label} dot={status.dot} />
             </div>
-            <div className="flex items-center gap-1.5">
-              <span>主办</span>
-              {owner ? (
-                <>
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10.5px] font-medium text-foreground/70">
-                    {owner.charAt(0)}
-                  </span>
-                  <span className="text-foreground/80">{owner}</span>
-                </>
-              ) : (
-                <span>—</span>
-              )}
+            <div className="flex items-baseline gap-1">
+              <span>主办：</span>
+              <span className="text-foreground/80">{owner ?? "—"}</span>
             </div>
           </div>
         </div>
