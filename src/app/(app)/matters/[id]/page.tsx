@@ -16,7 +16,7 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
   ]);
   if (!matter) notFound();
 
-  const [finance, userOptions, notes, documents, intakeContracts, folders, templates, preservations, allColleagues] = await Promise.all([
+  const [finance, userOptions, notes, documents, intakeContracts, folders, templates, preservations, allColleagues, sealContracts, expresses] = await Promise.all([
     getMatterFinance(matter.id),
     prisma.user.findMany({
       where: { active: true },
@@ -78,7 +78,36 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
     }),
     // v0.9.3: 本案保全记录
     listPreservations({ matterId: matter.id, status: "ALL" }),
-    listActiveColleagues()
+    listActiveColleagues(),
+    // v0.11: 案件下用印申请关联的合同附件（待盖章稿 + 盖章后扫描件）
+    prisma.sealRequest.findMany({
+      where: { matterId: matter.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        code: true,
+        documentTitle: true,
+        status: true,
+        createdAt: true,
+        draftDoc: { select: { id: true, name: true, size: true, createdAt: true } },
+        stampedDoc: { select: { id: true, name: true, size: true, createdAt: true } }
+      }
+    }),
+    // v0.11: 案件下快递追踪
+    prisma.expressTracking.findMany({
+      where: { matterId: matter.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        trackingNo: true,
+        companyCode: true,
+        direction: true,
+        purpose: true,
+        lastState: true,
+        lastUpdateAt: true,
+        createdAt: true
+      }
+    })
   ]);
 
   // v0.8: 卷宗对应文档（含 templateId 标识）
@@ -117,6 +146,8 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
         preservations={preservations}
         colleagues={allColleagues.map((c) => ({ id: c.id, name: c.name }))}
         currentUserRole={session?.user.role ?? null}
+        sealContracts={sealContracts}
+        expresses={expresses}
       />
     </div>
   );

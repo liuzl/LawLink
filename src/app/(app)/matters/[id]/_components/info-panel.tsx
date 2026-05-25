@@ -5,8 +5,6 @@ import {
   Users,
   CalendarClock,
   Gavel,
-  FileText,
-  Download,
   Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,17 +12,14 @@ import { userRoleLabel } from "@/lib/enums";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { calcCourtFee } from "@/lib/legal-calc";
 import type { MatterPayload, UserOption } from "./matter-detail-tabs";
-import type { DocumentPayload } from "./documents-panel";
 import { TeamEditorDialog } from "./team-editor-dialog";
 import { PartiesPanel } from "./parties-panel";
 
 export function InfoPanel({
   matter,
-  intakeContracts,
   userOptions
 }: {
   matter: MatterPayload;
-  intakeContracts: DocumentPayload[];
   userOptions: UserOption[];
 }) {
   const [teamEditorOpen, setTeamEditorOpen] = useState(false);
@@ -223,45 +218,6 @@ export function InfoPanel({
                   </li>
                 ))}
             </ul>
-          </section>
-
-          {/* 委托合同 */}
-          <section className="ll-surface p-6">
-            <CardHeader title="委托合同" icon={FileText} />
-            {intakeContracts.length === 0 ? (
-              <p className="mt-4 text-center text-xs text-muted-foreground">
-                收案时未上传委托合同
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {intakeContracts.map((d) => (
-                  <li
-                    key={d.id}
-                    className="group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 transition-colors hover:border-border"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <FileText className="h-4 w-4" strokeWidth={1.6} />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="truncate text-[0.82rem] font-medium">{d.name}</div>
-                      <div className="font-mono text-[10px] tabular text-muted-foreground">
-                        {d.size ? `${(d.size / 1024).toFixed(0)} KB` : ""} ·{" "}
-                        {new Date(d.createdAt).toLocaleDateString("zh-CN")}
-                      </div>
-                    </div>
-                    <a
-                      href={`/api/documents/${d.id}/download`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-muted-foreground transition-colors hover:text-primary"
-                      aria-label="下载"
-                    >
-                      <Download className="h-4 w-4" strokeWidth={1.6} />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
           </section>
 
         </div>

@@ -5,9 +5,7 @@ import { motion } from "framer-motion";
 import type { Prisma } from "@prisma/client";
 import {
   Info,
-  Wallet,
   FolderArchive,
-  FolderTree,
   MessageSquare,
   Shield,
   Clock,
@@ -38,6 +36,7 @@ import { AddProcedureSheet } from "./procedure-forms";
 import { FoldersPanel } from "./folders-panel";
 import { LifecycleActions } from "./lifecycle-actions";
 import { MatterPreservationPanel } from "./matter-preservation-panel";
+import { ContractsCard, ExpressMiniCard, type SealContractItem, type ExpressItem } from "./info-extras";
 import type { FolderPayload, FolderDocument, TemplateSummary } from "./folder-types";
 import type { PreservationRow, UserOption as PresUserOption } from "@/app/(app)/preservation/_components/preservation-types";
 
@@ -119,7 +118,7 @@ export type NotePayload = {
   createdAt: Date;
 };
 
-type TabKey = "info" | "finance" | "documents" | "folders" | "preservation" | "notes" | "timeline" | `proc:${string}`;
+type TabKey = "info" | "documents" | "preservation" | "notes" | "timeline" | `proc:${string}`;
 
 export function MatterDetailTabs({
   matter,
@@ -133,7 +132,9 @@ export function MatterDetailTabs({
   templates,
   preservations,
   colleagues,
-  currentUserRole
+  currentUserRole,
+  sealContracts,
+  expresses
 }: {
   matter: MatterPayload;
   finance: FinancePayload;
@@ -147,6 +148,8 @@ export function MatterDetailTabs({
   preservations: PreservationRow[];
   colleagues: PresUserOption[];
   currentUserRole: string | null;
+  sealContracts: SealContractItem[];
+  expresses: ExpressItem[];
 }) {
   const [tab, setTab] = useState<TabKey>("info");
   const [addProcOpen, setAddProcOpen] = useState(false);
@@ -287,14 +290,9 @@ export function MatterDetailTabs({
             基本信息
           </TabButton>
 
-          <TabButton active={tab === "finance"} onClick={() => setTab("finance")}>
-            <Wallet className="h-3.5 w-3.5" strokeWidth={1.8} />
-            财务
-          </TabButton>
-
           <TabButton active={tab === "documents"} onClick={() => setTab("documents")}>
             <FolderArchive className="h-3.5 w-3.5" strokeWidth={1.8} />
-            案件资料
+            案卷材料
             {documents.length > 0 && (
               <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
                 {documents.length}
@@ -308,7 +306,7 @@ export function MatterDetailTabs({
               <button
                 className={cn(
                   "mb-3.5 inline-flex items-center gap-1 rounded-sm px-1 py-0.5 text-[0.82rem] text-muted-foreground transition-colors hover:text-foreground",
-                  (tab === "folders" || tab === "preservation" || tab === "notes") && "text-primary font-medium"
+                  (tab === "preservation" || tab === "notes") && "text-primary font-medium"
                 )}
               >
                 <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -316,10 +314,6 @@ export function MatterDetailTabs({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => setTab("folders")}>
-                <FolderTree className="mr-2 h-4 w-4" />
-                卷宗 {folderDocuments.length > 0 ? `(${folderDocuments.length})` : ""}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTab("preservation")}>
                 <Shield className="mr-2 h-4 w-4" />
                 保全 {preservations.length > 0 ? `(${preservations.length})` : ""}
@@ -372,34 +366,34 @@ export function MatterDetailTabs({
 
         <div className="mt-4">
           {tab === "info" && (
-            <InfoPanel matter={matter} intakeContracts={intakeContracts} userOptions={userOptions} />
-          )}
-          {tab === "finance" && (
             <div className="space-y-4">
+              <InfoPanel matter={matter} userOptions={userOptions} />
+              <ContractsCard intakeContracts={intakeContracts} sealContracts={sealContracts} />
+              <ExpressMiniCard expresses={expresses} />
               <FinancePanel matterId={matter.id} finance={finance} userOptions={userOptions} />
               <InvoiceSection matterId={matter.id} />
             </div>
           )}
           {tab === "documents" && (
-            <DocumentsPanel
-              matterId={matter.id}
-              matterStatus={matter.status}
-              documents={documents}
-              procedures={matter.procedures.map((p) => ({
-                id: p.id,
-                label: p.customLabel ?? p.type
-              }))}
-              folders={folders.map((f) => ({ id: f.id, name: f.name }))}
-            />
-          )}
-          {tab === "folders" && (
-            <FoldersPanel
-              matterId={matter.id}
-              matterCategory={matter.category}
-              folders={folders}
-              documents={folderDocuments}
-              templates={templates}
-            />
+            <div className="space-y-4">
+              <FoldersPanel
+                matterId={matter.id}
+                matterCategory={matter.category}
+                folders={folders}
+                documents={folderDocuments}
+                templates={templates}
+              />
+              <DocumentsPanel
+                matterId={matter.id}
+                matterStatus={matter.status}
+                documents={documents}
+                procedures={matter.procedures.map((p) => ({
+                  id: p.id,
+                  label: p.customLabel ?? p.type
+                }))}
+                folders={folders.map((f) => ({ id: f.id, name: f.name }))}
+              />
+            </div>
           )}
           {tab === "preservation" && (
             <MatterPreservationPanel
