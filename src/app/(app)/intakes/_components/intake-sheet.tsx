@@ -668,53 +668,50 @@ export function IntakeSheet({
                 </div>
               )}
               <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
-                {/* 一键添加：先选诉讼地位 → 自动决定 role 并新建一行 */}
-                <Select
-                  value=""
-                  onValueChange={(v) => {
-                    if (!v) return;
-                    if (v === "THIRD_PARTY") {
-                      appendParty({
-                        role: "THIRD_PARTY",
-                        standing: undefined,
-                        ordinal: parties.filter((p) => p.role === "THIRD_PARTY").length + 1,
-                        name: "",
-                        idNumber: "",
-                        phone: "",
-                        address: "",
-                        legalRep: "",
-                        notes: ""
-                      });
-                    } else {
-                      appendParty({
-                        role: "OPPOSING_PARTY",
-                        standing: v as LitigationStanding,
-                        ordinal: parties.filter((p) => p.role === "OPPOSING_PARTY").length + 1,
-                        name: "",
-                        idNumber: "",
-                        phone: "",
-                        address: "",
-                        legalRep: "",
-                        notes: ""
-                      });
-                    }
-                  }}
-                  disabled={!firstProcedureType}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() =>
+                    appendParty({
+                      role: "OPPOSING_PARTY",
+                      standing: undefined,
+                      ordinal: parties.filter((p) => p.role === "OPPOSING_PARTY").length + 1,
+                      name: "",
+                      idNumber: "",
+                      phone: "",
+                      address: "",
+                      legalRep: "",
+                      notes: ""
+                    })
+                  }
                 >
-                  <SelectTrigger className="h-8 w-44">
-                    <SelectValue
-                      placeholder={firstProcedureType ? "+ 添加当事人（选诉讼地位）" : "请先选代理程序"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {oppositeStandingOptions.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        对方 · {litigationStandingLabel[s]}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="THIRD_PARTY">第三人</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Plus className="h-3 w-3" />
+                  添加对方
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() =>
+                    appendParty({
+                      role: "THIRD_PARTY",
+                      standing: undefined,
+                      ordinal: parties.filter((p) => p.role === "THIRD_PARTY").length + 1,
+                      name: "",
+                      idNumber: "",
+                      phone: "",
+                      address: "",
+                      legalRep: "",
+                      notes: ""
+                    })
+                  }
+                >
+                  <Plus className="h-3 w-3" />
+                  添加第三人
+                </Button>
               </div>
 
               {parties.length === 0 ? (
@@ -742,13 +739,17 @@ export function IntakeSheet({
                                 { shouldDirty: true }
                               )
                             }
-                            disabled={!firstProcedureType}
                           >
                             <SelectTrigger className="h-7 w-32 bg-background text-xs">
                               <SelectValue placeholder="诉讼地位" />
                             </SelectTrigger>
                             <SelectContent>
-                              {oppositeStandingOptions.map((s) => (
+                              {(oppositeStandingOptions.length > 0
+                                ? oppositeStandingOptions
+                                : (Object.keys(
+                                    litigationStandingLabel
+                                  ) as LitigationStanding[])
+                              ).map((s) => (
                                 <SelectItem key={s} value={s} className="text-xs">
                                   {litigationStandingLabel[s]}
                                 </SelectItem>

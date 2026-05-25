@@ -188,8 +188,8 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
             )}
           </div>
         ) : (
-          // 级联模式：3-4 列（一级 / 二级 / 三级 / 四级）
-          <div className="grid grid-cols-3 divide-x divide-border lg:grid-cols-4">
+          // 级联模式：渐进展开（选了上一级才出现下一列）
+          <div className="flex divide-x divide-border">
             <Column
               title="一级"
               items={l1Nodes}
@@ -200,43 +200,54 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
                 setPickedL3(null);
               }}
             />
-            <Column
-              title="二级"
-              items={l2Nodes}
-              activeId={pickedL2}
-              empty={pickedL1 ? "无二级" : "← 先选一级"}
-              onPick={(n) => {
-                setPickedL2(n.id);
-                setPickedL3(null);
-              }}
-              onDouble={pickNode}
-            />
-            <Column
-              title="三级"
-              items={l3Nodes}
-              activeId={pickedL3}
-              empty={pickedL2 ? "无三级" : "← 先选二级"}
-              onPick={(n) => {
-                // 没有四级 → 直接选中
-                const hasChildren = allNodes.some(
-                  (x) => x.level === 4 && x.parentId === n.id
-                );
-                if (hasChildren) {
-                  setPickedL3(n.id);
-                } else {
-                  pickNode(n);
-                }
-              }}
-              onDouble={pickNode}
-            />
-            <Column
-              title="四级"
-              items={l4Nodes}
-              activeId={null}
-              empty={pickedL3 ? "无四级" : "无"}
-              onPick={pickNode}
-              className="hidden lg:block"
-            />
+            {pickedL1 && (
+              <Column
+                title="二级"
+                items={l2Nodes}
+                activeId={pickedL2}
+                empty="该一级下无二级"
+                onPick={(n) => {
+                  // 没有三级 → 直接选中
+                  const hasChildren = allNodes.some(
+                    (x) => x.level === 3 && x.parentId === n.id
+                  );
+                  if (hasChildren) {
+                    setPickedL2(n.id);
+                    setPickedL3(null);
+                  } else {
+                    pickNode(n);
+                  }
+                }}
+                onDouble={pickNode}
+              />
+            )}
+            {pickedL2 && (
+              <Column
+                title="三级"
+                items={l3Nodes}
+                activeId={pickedL3}
+                empty="该二级下无三级"
+                onPick={(n) => {
+                  const hasChildren = allNodes.some(
+                    (x) => x.level === 4 && x.parentId === n.id
+                  );
+                  if (hasChildren) {
+                    setPickedL3(n.id);
+                  } else {
+                    pickNode(n);
+                  }
+                }}
+                onDouble={pickNode}
+              />
+            )}
+            {pickedL3 && l4Nodes.length > 0 && (
+              <Column
+                title="四级"
+                items={l4Nodes}
+                activeId={null}
+                onPick={pickNode}
+              />
+            )}
           </div>
         )}
       </PopoverContent>

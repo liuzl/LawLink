@@ -85,12 +85,11 @@ export async function searchCauses(params: {
   const q = params.query?.trim();
 
   if (!q) {
-    // 空查询：返回所有二级 + 部分三级，按 level 升序，便于浏览分类
+    // 空查询：返回该 category 下全部 4 级（级联 UI 需要 level=1）
     const list = await prisma.causeOfAction.findMany({
       where: {
         category: params.category,
-        active: true,
-        level: { gte: 2, lte: 3 }
+        active: true
       },
       orderBy: [{ level: "asc" }, { code: "asc" }],
       take: limit,
