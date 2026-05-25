@@ -82,8 +82,9 @@ export const partyInputSchema = z.object({
   // v0.5: 具体诉讼地位（按首程序联动）
   standing: litigationStandingSchema.optional(),
   ordinal: z.number().int().min(1).default(1),
+  // v0.17: idNumber 改必填（用于利益冲突检索）
   name: z.string().min(1, "当事人姓名/名称必填").max(120),
-  idNumber: z.string().max(50).optional().or(z.literal("")),
+  idNumber: z.string().min(1, "当事人证件号必填（用于利益冲突检索）").max(50),
   phone: z.string().max(30).optional().or(z.literal("")),
   address: z.string().max(200).optional().or(z.literal("")),
   legalRep: z.string().max(40).optional().or(z.literal("")),

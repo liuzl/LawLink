@@ -243,6 +243,16 @@ export function IntakeSheet({
   }
 
   function onSubmit(values: IntakeCreateInput) {
+    // v0.17: 其他案件当事人必须填名称 + 证件号（用于利益冲突检索）
+    const missing = (values.parties ?? []).find(
+      (p) => !p.name?.trim() || !p.idNumber?.trim()
+    );
+    if (missing) {
+      toast.warning("当事人必填", {
+        description: "请为所有「其他案件当事人」填写姓名/名称和证件号（用于利益冲突检索），不需要的可删除该行"
+      });
+      return;
+    }
     startTransition(() => performSubmit(values));
   }
 
@@ -744,12 +754,21 @@ export function IntakeSheet({
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Input
-                          placeholder="姓名 / 名称"
+                          placeholder="姓名 / 名称 *（必填，用于利益冲突）"
                           {...register(`parties.${idx}.name`)}
+                          className={
+                            !watch(`parties.${idx}.name`)?.trim()
+                              ? "border-destructive/50 focus-visible:ring-destructive/30"
+                              : ""
+                          }
                         />
                         <Input
-                          placeholder="身份证 / 信用代码"
-                          className="font-mono"
+                          placeholder="身份证 / 信用代码 *（必填）"
+                          className={cn(
+                            "font-mono",
+                            !watch(`parties.${idx}.idNumber`)?.trim() &&
+                              "border-destructive/50 focus-visible:ring-destructive/30"
+                          )}
                           {...register(`parties.${idx}.idNumber`)}
                         />
                       </div>
