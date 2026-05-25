@@ -139,7 +139,7 @@ export function CaseListCard({
               <Cell label="客户" minWidthCh={16}>
                 {clientName ?? <span className="text-muted-foreground/60">—</span>}
               </Cell>
-              <Cell label="案由">
+              <Cell label="案由" minWidthCh={14}>
                 {causeText ?? <span className="text-muted-foreground/60">—</span>}
               </Cell>
               <Cell label="标的">
