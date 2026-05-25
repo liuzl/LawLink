@@ -294,19 +294,44 @@ export async function getArchivePrepData(matterId: string) {
     select: { content: true }
   });
 
+  // v0.17: 已上传并关联到 checklist item 的材料（用于向导自动勾选）
+  const linkedDocs = await prisma.document.findMany({
+    where: {
+      matterId,
+      deletedAt: null,
+      archiveChecklistItemId: { not: null }
+    },
+    select: {
+      id: true,
+      name: true,
+      archiveChecklistItemId: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  // itemId → 关联材料列表（保留全部，UI 展示首条 + 余数）
+  const docsByItem: Record<string, { id: string; name: string }[]> = {};
+  for (const d of linkedDocs) {
+    const key = d.archiveChecklistItemId!;
+    (docsByItem[key] ??= []).push({ id: d.id, name: d.name });
+  }
+
   return {
     matter,
     checklist,
-    existingSummary: lastCloseEvent?.content ?? null
+    existingSummary: lastCloseEvent?.content ?? null,
+    docsByItem
   };
 }
 
 /**
- * 已归档案件列表（/archive 总览页）
+ * 已归档案件列表（/archive 总览页）—— 仅 status=APPROVED
  */
 export async function listArchivedMatters() {
   await requireSession();
   return prisma.archiveRecord.findMany({
+    where: { status: "APPROVED" },
     orderBy: { archivedAt: "desc" },
     take: 200,
     select: {
@@ -318,6 +343,43 @@ export async function listArchivedMatters() {
       archivedAt: true,
       archivedBy: true,
       missingItems: true,
+      matter: {
+        select: {
+          id: true,
+          title: true,
+          internalCode: true,
+          category: true,
+          primaryClient: { select: { name: true } }
+        }
+      }
+    }
+  });
+}
+
+/**
+ * v0.17: 待审批归档申请列表（仅 ADMIN）
+ * /archive 待审批 tab 使用
+ */
+export async function listPendingArchiveRecords() {
+  const session = await requireSession();
+  if (session.user.role !== "ADMIN") {
+    throw new Error("仅管理员可查看待审批归档");
+  }
+  return prisma.archiveRecord.findMany({
+    where: { status: "PENDING_REVIEW" },
+    orderBy: { archivedAt: "asc" },
+    take: 200,
+    select: {
+      id: true,
+      archiveNo: true,
+      summary: true,
+      judgmentSummary: true,
+      closedReason: true,
+      completedAt: true,
+      archivedAt: true,
+      archivedBy: true,
+      missingItems: true,
+      checklistJson: true,
       matter: {
         select: {
           id: true,

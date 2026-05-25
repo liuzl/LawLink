@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { Lock, FileText, Calendar, User, Download } from "lucide-react";
-import { listArchivedMatters } from "@/server/archive/actions";
+import {
+  listArchivedMatters,
+  listPendingArchiveRecords
+} from "@/server/archive/actions";
 import { CLOSED_REASON_CN } from "@/server/archive/schemas";
 import { Badge } from "@/components/ui/badge";
+import { requireSession } from "@/lib/auth/session";
+import { PendingArchiveTable } from "./_components/pending-archive-table";
+import { ArchiveTabs } from "./_components/archive-tabs";
 
 const CATEGORY_CN: Record<string, string> = {
   CIVIL_COMMERCIAL: "民商",
@@ -13,8 +19,20 @@ const CATEGORY_CN: Record<string, string> = {
   SPECIAL_PROJECT: "专项"
 };
 
-export default async function ArchivePage() {
-  const items = await listArchivedMatters();
+export default async function ArchivePage({
+  searchParams
+}: {
+  searchParams?: { tab?: string };
+}) {
+  const session = await requireSession();
+  const isAdmin = session.user.role === "ADMIN";
+  const activeTab =
+    isAdmin && searchParams?.tab === "pending" ? "pending" : "approved";
+
+  const [items, pending] = await Promise.all([
+    listArchivedMatters(),
+    isAdmin ? listPendingArchiveRecords() : Promise.resolve([])
+  ]);
 
   return (
     <div className="px-6 py-6 space-y-5">
@@ -22,16 +40,28 @@ export default async function ArchivePage() {
         <div>
           <h1 className="text-xl font-medium flex items-center gap-2">
             <Lock className="h-5 w-5 text-[#9B7BF7]" />
-            归档总览
+            归档管理
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            已归档的案件按归档日期降序排列。点击进入案件详情可查看卷宗封皮与目录，或导出归档包。
+            {isAdmin
+              ? "管理员视角：审批待归档申请 + 查看已归档案件。"
+              : "已归档案件按归档日期降序排列。点击进入案件详情可查看卷宗封皮与目录，或导出归档包。"}
           </p>
         </div>
-        <span className="text-xs text-muted-foreground">共 {items.length} 件</span>
+        <span className="text-xs text-muted-foreground">
+          {activeTab === "pending"
+            ? `待审批 ${pending.length} 件`
+            : `已归档 ${items.length} 件`}
+        </span>
       </header>
 
-      {items.length === 0 ? (
+      {isAdmin && (
+        <ArchiveTabs active={activeTab} pendingCount={pending.length} />
+      )}
+
+      {activeTab === "pending" && isAdmin ? (
+        <PendingArchiveTable records={pending} />
+      ) : items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border/60 py-16 text-center text-sm text-muted-foreground">
           暂无已归档案件。在案件详情顶部&ldquo;状态 → 归档&rdquo;完成归档流程后，会出现在这里。
         </div>
