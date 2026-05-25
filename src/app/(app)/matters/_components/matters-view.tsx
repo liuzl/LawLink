@@ -145,7 +145,7 @@ export function MattersView({
 
       {/* Tab */}
       <div
-        className="flex items-end gap-6 border-b"
+        className="flex items-end gap-1 border-b border-border"
       >
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -156,10 +156,10 @@ export function MattersView({
               type="button"
               onClick={() => switchTab(t.key)}
               className={cn(
-                "relative inline-flex items-center gap-1.5 pb-2.5 pt-0.5 text-[13px] transition-colors",
+                "relative inline-flex items-center gap-1.5 rounded-t-md px-3 pb-2.5 pt-2 text-[13px] transition-colors",
                 active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card text-primary font-medium border border-b-transparent border-border"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               )}
             >
               <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />

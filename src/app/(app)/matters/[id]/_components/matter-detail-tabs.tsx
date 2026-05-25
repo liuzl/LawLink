@@ -268,7 +268,7 @@ export function MatterDetailTabs({
         transition={{ duration: 0.4, delay: 0.05 }}
       >
         <div
-          className="flex items-end gap-5 overflow-x-auto border-b border-border scrollbar-none"
+          className="flex items-end gap-1 overflow-x-auto border-b border-border scrollbar-none"
         >
           <TabButton active={tab === "info"} onClick={() => setTab("info")}>
             <Info className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -471,10 +471,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative inline-flex shrink-0 items-center gap-1.5 pb-2.5 pt-0.5 text-[13px] transition-colors",
+        "group relative inline-flex shrink-0 items-center gap-1.5 rounded-t-md px-3 pb-2.5 pt-2 text-[13px] transition-colors",
         active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground"
+          ? "bg-card text-primary font-medium border border-b-transparent border-border"
+          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
       )}
     >
       {children}
