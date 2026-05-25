@@ -125,8 +125,8 @@ export function CaseListCard({
               </span>
             </div>
 
-            {/* 左下：收案时间 / 客户 / 案由 / 标的 — 固定 4 列 */}
-            <div className="mt-2 grid grid-cols-4 gap-x-2 text-[12.5px]">
+            {/* 左下：收案时间 / 客户 / 案由 / 标的 — 紧凑 inline 排列 */}
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
               <Cell label="收案时间">
                 {intakeDate ? (
                   <span className="font-mono">
