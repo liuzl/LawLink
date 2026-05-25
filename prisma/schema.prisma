@@ -88,6 +88,18 @@ enum FeeType {
   CONTINGENCY // 风险代理
 }
 
+enum InvoiceType {
+  PLAIN // 普通发票
+  SPECIAL // 增值税专用发票
+}
+
+enum InvoiceItem {
+  LAWYER_FEE // 律师服务费
+  CONSULTING_FEE // 法律咨询费
+  AGENCY_FEE // 代理费
+  OTHER // 其他法律服务
+}
+
 enum InvoiceRequestStatus {
   PENDING // 律师已申请、待财务处理
   APPROVED // 财务已批准、待开票
@@ -826,9 +838,16 @@ model InvoiceRequest {
   matterId    String
   matter      Matter               @relation(fields: [matterId], references: [id], onDelete: Cascade)
   amount      Decimal              @db.Decimal(14, 2)
-  title       String? // 客户称谓 / 备注
+  title       String? // 备注 / 客户称谓（仅做兼容，新字段用 buyerName）
   status      InvoiceRequestStatus @default(PENDING)
   requestNote String?
+
+  // v0.12: 开票类型 + 名目 + 抬头 + 税号 + 开票依据
+  invoiceType    InvoiceType?
+  invoiceItem    InvoiceItem?
+  buyerName      String? // 开票抬头（客户名，可编辑）
+  buyerTaxNo     String? // 客户税号（专票必填）
+  evidenceDocIds String[] @default([]) // 开票依据 Document id 列表
 
   requestedById String
   requestedBy   User     @relation("InvoiceRequester", fields: [requestedById], references: [id])

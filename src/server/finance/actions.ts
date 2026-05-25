@@ -269,7 +269,7 @@ export async function getMatterFinance(matterId: string) {
 }
 
 /**
- * v0.11: 列出案件下的申请发票，用于"新增收付记录"对话框里关联发票
+ * v0.11: 列出案件下的申请发票
  */
 export async function listMatterInvoiceRequests(matterId: string) {
   const session = await requireSession();
@@ -284,8 +284,96 @@ export async function listMatterInvoiceRequests(matterId: string) {
       status: true,
       processNote: true,
       requestedAt: true,
-      processedAt: true
+      processedAt: true,
+      invoiceType: true,
+      invoiceItem: true,
+      buyerName: true,
+      buyerTaxNo: true,
+      evidenceDocIds: true
     }
+  });
+}
+
+/**
+ * v0.12: 获取案件用于开票的默认信息（客户抬头 + 关联 Intake id）
+ */
+export async function getMatterInvoiceContext(matterId: string) {
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
+  const m = await prisma.matter.findUnique({
+    where: { id: matterId },
+    select: {
+      id: true,
+      title: true,
+      intakeId: true,
+      intake: {
+        select: {
+          id: true,
+          status: true,
+          receivedAt: true,
+          client: { select: { name: true } }
+        }
+      },
+      primaryClient: { select: { id: true, name: true } }
+    }
+  });
+  if (!m) throw new Error("案件不存在");
+  return {
+    matterId: m.id,
+    matterTitle: m.title,
+    intakeId: m.intakeId ?? null,
+    intake: m.intake
+      ? {
+          id: m.intake.id,
+          status: m.intake.status,
+          receivedAt: m.intake.receivedAt,
+          clientName: m.intake.client?.name ?? null
+        }
+      : null,
+    defaultBuyerName:
+      m.primaryClient?.name ?? m.intake?.client?.name ?? null
+  };
+}
+
+/**
+ * v0.12: 创建开票申请（带类型/名目/抬头/依据）
+ */
+export async function createInvoiceRequest(input: {
+  matterId: string;
+  amount: number;
+  invoiceType: "PLAIN" | "SPECIAL";
+  invoiceItem: "LAWYER_FEE" | "CONSULTING_FEE" | "AGENCY_FEE" | "OTHER";
+  buyerName: string;
+  buyerTaxNo?: string | null;
+  evidenceDocIds: string[];
+  requestNote?: string | null;
+}) {
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, input.matterId);
+
+  if (input.amount <= 0) throw new Error("金额必须大于 0");
+  if (!input.buyerName.trim()) throw new Error("请填写开票抬头");
+  if (input.invoiceType === "SPECIAL" && !input.buyerTaxNo?.trim()) {
+    throw new Error("增值税专用发票必须填写客户税号");
+  }
+  if (input.evidenceDocIds.length === 0) {
+    throw new Error("请上传至少一份开票依据（合同 / 缴费记录等）");
+  }
+
+  return prisma.invoiceRequest.create({
+    data: {
+      matterId: input.matterId,
+      amount: input.amount,
+      invoiceType: input.invoiceType,
+      invoiceItem: input.invoiceItem,
+      buyerName: input.buyerName.trim(),
+      buyerTaxNo: input.buyerTaxNo?.trim() || null,
+      evidenceDocIds: input.evidenceDocIds,
+      title: input.buyerName.trim(),
+      requestNote: input.requestNote?.trim() || null,
+      requestedById: session.user.id
+    },
+    select: { id: true }
   });
 }
 
