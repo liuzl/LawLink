@@ -498,3 +498,90 @@ export async function getLatestArchiveRecord(matterId: string) {
     }
   });
 }
+
+/**
+ * v0.20: 批量审批 —— 通过
+ *
+ * 单条独立处理（不强求原子），逐条复用 approveArchiveRecord 的事务。
+ * 返回 { succeeded, failed }，failed 含失败原因，前端展示部分失败的情况。
+ */
+export async function batchApproveArchiveRecords(input: {
+  archiveIds: string[];
+  note?: string;
+}): Promise<{
+  succeeded: string[];
+  failed: { id: string; error: string }[];
+}> {
+  const session = await requireSession();
+  if (session.user.role !== "ADMIN") {
+    throw new Error("只有管理员可以审批归档申请");
+  }
+  if (!input.archiveIds.length) throw new Error("未选择任何归档申请");
+  if (input.archiveIds.length > 100) throw new Error("单次批量不超过 100 条");
+
+  const succeeded: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (const id of input.archiveIds) {
+    try {
+      await approveArchiveRecord({ archiveId: id, note: input.note });
+      succeeded.push(id);
+    } catch (err) {
+      failed.push({ id, error: err instanceof Error ? err.message : "未知错误" });
+    }
+  }
+  await audit({
+    userId: session.user.id,
+    action: "ARCHIVE_BATCH_APPROVE",
+    targetType: "ArchiveRecord",
+    targetId: input.archiveIds.join(","),
+    detail: {
+      total: input.archiveIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length
+    }
+  });
+  return { succeeded, failed };
+}
+
+/**
+ * v0.20: 批量审批 —— 驳回（统一原因）
+ */
+export async function batchRejectArchiveRecords(input: {
+  archiveIds: string[];
+  note: string;
+}): Promise<{
+  succeeded: string[];
+  failed: { id: string; error: string }[];
+}> {
+  const session = await requireSession();
+  if (session.user.role !== "ADMIN") {
+    throw new Error("只有管理员可以驳回归档申请");
+  }
+  if (!input.archiveIds.length) throw new Error("未选择任何归档申请");
+  if (input.archiveIds.length > 100) throw new Error("单次批量不超过 100 条");
+  if (!input.note.trim()) throw new Error("请填写驳回原因");
+
+  const succeeded: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (const id of input.archiveIds) {
+    try {
+      await rejectArchiveRecord({ archiveId: id, note: input.note });
+      succeeded.push(id);
+    } catch (err) {
+      failed.push({ id, error: err instanceof Error ? err.message : "未知错误" });
+    }
+  }
+  await audit({
+    userId: session.user.id,
+    action: "ARCHIVE_BATCH_REJECT",
+    targetType: "ArchiveRecord",
+    targetId: input.archiveIds.join(","),
+    detail: {
+      total: input.archiveIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length,
+      note: input.note.trim()
+    }
+  });
+  return { succeeded, failed };
+}

@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import {
   approveArchiveRecord,
-  rejectArchiveRecord
+  rejectArchiveRecord,
+  batchApproveArchiveRecords,
+  batchRejectArchiveRecords
 } from "@/server/archive/actions";
 import { CLOSED_REASON_CN } from "@/server/archive/schemas";
 import {
@@ -30,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const CATEGORY_CN: Record<string, string> = {
   CIVIL_COMMERCIAL: "民商",
@@ -65,6 +68,8 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
     type: "approve" | "reject" | "detail";
     record: PendingRecord;
   } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchAction, setBatchAction] = useState<"approve" | "reject" | null>(null);
 
   if (records.length === 0) {
     return (
@@ -74,12 +79,71 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
     );
   }
 
+  const allChecked = records.length > 0 && selected.size === records.length;
+  const indeterminate = selected.size > 0 && !allChecked;
+
+  function toggleAll() {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(records.map((r) => r.id)));
+  }
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const selectedRecords = records.filter((r) => selected.has(r.id));
+
   return (
     <>
+      {/* 批量操作 toolbar */}
+      {selected.size > 0 && (
+        <div className="mb-2 flex items-center justify-between rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            已选 <span className="font-mono font-medium">{selected.size}</span> /{" "}
+            <span className="font-mono text-muted-foreground">{records.length}</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelected(new Set())}
+            >
+              取消选择
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setBatchAction("approve")}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              <Check className="mr-1 h-3.5 w-3.5" />
+              批量通过
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setBatchAction("reject")}
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              批量驳回
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-lg border border-border/60 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 text-xs text-muted-foreground">
             <tr>
+              <th className="px-3 py-2 w-8">
+                <Checkbox
+                  checked={allChecked ? true : indeterminate ? "indeterminate" : false}
+                  onCheckedChange={toggleAll}
+                  aria-label="全选"
+                />
+              </th>
               <th className="px-3 py-2 text-left font-normal w-32">归档号</th>
               <th className="px-3 py-2 text-left font-normal">案件</th>
               <th className="px-3 py-2 text-left font-normal w-20">类别</th>
@@ -94,6 +158,13 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
           <tbody className="divide-y divide-border/60">
             {records.map((rec) => (
               <tr key={rec.id} className="hover:bg-muted/20 transition-colors">
+                <td className="px-3 py-2.5">
+                  <Checkbox
+                    checked={selected.has(rec.id)}
+                    onCheckedChange={() => toggleOne(rec.id)}
+                    aria-label={`选择 ${rec.archiveNo}`}
+                  />
+                </td>
                 <td className="px-3 py-2.5 font-mono text-xs text-[#9B7BF7]">
                   {rec.archiveNo}
                 </td>
@@ -187,7 +258,210 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
       {dialog?.type === "detail" && (
         <DetailDialog record={dialog.record} onClose={() => setDialog(null)} />
       )}
+      {batchAction === "approve" && (
+        <BatchApproveDialog
+          records={selectedRecords}
+          onClose={(succeeded) => {
+            setBatchAction(null);
+            if (succeeded) setSelected(new Set());
+          }}
+        />
+      )}
+      {batchAction === "reject" && (
+        <BatchRejectDialog
+          records={selectedRecords}
+          onClose={(succeeded) => {
+            setBatchAction(null);
+            if (succeeded) setSelected(new Set());
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function BatchApproveDialog({
+  records,
+  onClose
+}: {
+  records: PendingRecord[];
+  onClose: (succeeded: boolean) => void;
+}) {
+  const router = useRouter();
+  const [note, setNote] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const withMissing = records.filter((r) => r.missingItems.length > 0);
+
+  function submit() {
+    startTransition(async () => {
+      try {
+        const res = await batchApproveArchiveRecords({
+          archiveIds: records.map((r) => r.id),
+          note: note.trim() || undefined
+        });
+        if (res.failed.length === 0) {
+          toast.success(`已批量通过 ${res.succeeded.length} 条归档申请`);
+        } else {
+          toast.warning(
+            `部分成功：通过 ${res.succeeded.length} 条，失败 ${res.failed.length} 条`,
+            {
+              description: res.failed.map((f) => f.error).slice(0, 3).join("；")
+            }
+          );
+        }
+        onClose(true);
+        router.refresh();
+      } catch (err) {
+        toast.error("批量通过失败", {
+          description: err instanceof Error ? err.message : ""
+        });
+      }
+    });
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose(false)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-emerald-500" />
+            批量通过 {records.length} 条归档申请
+          </DialogTitle>
+          <DialogDescription>
+            通过后涉案件全部进入「已归档」只读状态，且通知申请人。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {withMissing.length > 0 && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                有 {withMissing.length} 条申请存在材料缺项（
+                {withMissing
+                  .slice(0, 3)
+                  .map((r) => r.archiveNo)
+                  .join("、")}
+                {withMissing.length > 3 ? "…" : ""}）。确认知悉后再通过。
+              </span>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs">统一审批备注（可选）</Label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="备注会写入每条归档记录"
+              rows={2}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose(false)} disabled={isPending}>
+            取消
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={isPending}
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            确认通过 {records.length} 条
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BatchRejectDialog({
+  records,
+  onClose
+}: {
+  records: PendingRecord[];
+  onClose: (succeeded: boolean) => void;
+}) {
+  const router = useRouter();
+  const [note, setNote] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  function submit() {
+    if (!note.trim()) {
+      toast.warning("请填写驳回原因（将统一应用到所选记录）");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const res = await batchRejectArchiveRecords({
+          archiveIds: records.map((r) => r.id),
+          note: note.trim()
+        });
+        if (res.failed.length === 0) {
+          toast.success(`已批量驳回 ${res.succeeded.length} 条`);
+        } else {
+          toast.warning(
+            `部分成功：驳回 ${res.succeeded.length} 条，失败 ${res.failed.length} 条`,
+            {
+              description: res.failed.map((f) => f.error).slice(0, 3).join("；")
+            }
+          );
+        }
+        onClose(true);
+        router.refresh();
+      } catch (err) {
+        toast.error("批量驳回失败", {
+          description: err instanceof Error ? err.message : ""
+        });
+      }
+    });
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose(false)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <X className="h-5 w-5 text-destructive" />
+            批量驳回 {records.length} 条归档申请
+          </DialogTitle>
+          <DialogDescription>
+            驳回原因将统一发送给每条申请的提交律师。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
+            <div className="text-muted-foreground mb-1">本次驳回：</div>
+            <div className="space-y-0.5 max-h-32 overflow-y-auto">
+              {records.map((r) => (
+                <div key={r.id} className="font-mono text-[#9B7BF7]">
+                  {r.archiveNo}
+                  <span className="ml-2 text-muted-foreground">{r.matter.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              统一驳回原因 <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="如：本批结案小结普遍过于简略，请补充裁判要旨与办案心得后重新提交"
+              rows={4}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose(false)} disabled={isPending}>
+            取消
+          </Button>
+          <Button variant="destructive" onClick={submit} disabled={isPending}>
+            {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            确认驳回 {records.length} 条
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
