@@ -14,7 +14,8 @@ import {
   FileText,
   X,
   CalendarDays,
-  ScanLine
+  ScanLine,
+  Sparkles
 } from "lucide-react";
 import type {
   MatterCategory,
@@ -69,6 +70,7 @@ import {
 } from "@/server/ai/recommend-cause";
 import { cn } from "@/lib/utils";
 import { CauseCombobox } from "@/app/(app)/matters/_components/cause-combobox";
+import { CauseAiManualDialog } from "@/app/(app)/matters/_components/cause-ai-manual-dialog";
 import type { ClientOption } from "@/app/(app)/matters/_components/matters-view";
 import { ClientCombobox } from "./client-combobox";
 import { CauseRecommendationDialog } from "./cause-recommendation-dialog";
@@ -155,6 +157,7 @@ export function IntakeSheet({
     category: MatterCategory;
     text: string;
   } | null>(null);
+  const [aiManualOpen, setAiManualOpen] = useState(false);
 
   const {
     register,
@@ -524,11 +527,23 @@ export function IntakeSheet({
             {/* 4. 案由 + 标的 + 收案时间 */}
             <Section title="④ 案由与标的">
               <Field label="案由">
-                <CauseCombobox
-                  category={category}
-                  value={watch("causeId") || ""}
-                  onChange={(id) => setValue("causeId", id, { shouldDirty: true })}
-                />
+                <div className="flex items-stretch gap-1.5">
+                  <div className="flex-1">
+                    <CauseCombobox
+                      category={category}
+                      value={watch("causeId") || ""}
+                      onChange={(id) => setValue("causeId", id, { shouldDirty: true })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAiManualOpen(true)}
+                    className="shrink-0 rounded-md border border-border bg-background px-2.5 text-violet-600 hover:border-violet-400 hover:bg-violet-50"
+                    title="AI 推荐案由（手动输入案情）"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </div>
               </Field>
 
               <div className="grid grid-cols-2 gap-3">
@@ -933,6 +948,25 @@ export function IntakeSheet({
         onSelect={handleAiRecSelect}
         onOpenChange={setAiRecOpen}
         onRetry={handleAiRecRetry}
+      />
+      <CauseAiManualDialog
+        open={aiManualOpen}
+        onOpenChange={setAiManualOpen}
+        category={category}
+        contextHints={(() => {
+          const lines: string[] = [];
+          const cf = watch("causeFreeText");
+          if (cf) lines.push(`OCR 识别案由：${cf}`);
+          const cd = watch("claimDescription");
+          if (cd) lines.push(`诉讼请求：${cd}`);
+          const opp = parties
+            .filter((p) => p.role === "OPPOSING_PARTY")
+            .map((p) => p.name)
+            .filter(Boolean);
+          if (opp.length) lines.push(`对方当事人：${opp.join("、")}`);
+          return lines.join("\n");
+        })()}
+        onSelect={handleAiRecSelect}
       />
     </Dialog>
   );

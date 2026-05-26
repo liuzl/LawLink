@@ -1,11 +1,11 @@
 "use client";
 
-import { useTransition, useEffect } from "react";
+import { useTransition, useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Sparkles } from "lucide-react";
 import type { MatterCategory, LitigationStanding, ProcedureType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ import { matterCreateSchema, type MatterCreateInput } from "@/server/matters/sch
 import { createMatter } from "@/server/matters/actions";
 import { cn } from "@/lib/utils";
 import { CauseCombobox } from "./cause-combobox";
+import { CauseAiManualDialog } from "./cause-ai-manual-dialog";
 import type { ClientOption } from "./matters-view";
 
 const CATEGORIES: MatterCategory[] = [
@@ -106,6 +107,7 @@ export function MatterSheet({
   const ourStanding = watch("ourStanding");
   const procedureType = watch("firstProcedure.type");
   const clientIds = watch("clientIds");
+  const [aiManualOpen, setAiManualOpen] = useState(false);
 
   // 当 category 变化时，重置依赖字段
   useEffect(() => {
@@ -211,11 +213,23 @@ export function MatterSheet({
               </Field>
 
               <Field label="案由" required full>
-                <CauseCombobox
-                  category={category}
-                  value={watch("causeId") || ""}
-                  onChange={(id) => setValue("causeId", id, { shouldDirty: true })}
-                />
+                <div className="flex items-stretch gap-1.5">
+                  <div className="flex-1">
+                    <CauseCombobox
+                      category={category}
+                      value={watch("causeId") || ""}
+                      onChange={(id) => setValue("causeId", id, { shouldDirty: true })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAiManualOpen(true)}
+                    className="shrink-0 rounded-md border border-border bg-background px-2.5 text-violet-600 hover:border-violet-400 hover:bg-violet-50"
+                    title="AI 推荐案由"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </div>
               </Field>
 
               <Field label="标的金额（元）">
@@ -484,6 +498,18 @@ export function MatterSheet({
           </SheetFooter>
         </form>
       </SheetContent>
+      <CauseAiManualDialog
+        open={aiManualOpen}
+        onOpenChange={setAiManualOpen}
+        category={category}
+        contextHints={(() => {
+          const lines: string[] = [];
+          const title = watch("title");
+          if (title) lines.push(`案件名称：${title}`);
+          return lines.join("\n");
+        })()}
+        onSelect={(id) => setValue("causeId", id, { shouldDirty: true })}
+      />
     </Sheet>
   );
 }
