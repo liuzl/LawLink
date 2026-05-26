@@ -9,6 +9,7 @@ import {
   Shield,
   Clock,
   Plus,
+  Scale,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { matterStatusLabel, procedureTypeLabel } from "@/lib/enums";
@@ -22,6 +23,7 @@ import { AddProcedureSheet } from "./procedure-forms";
 import { FoldersPanel } from "./folders-panel";
 import { LifecycleActions } from "./lifecycle-actions";
 import { MatterPreservationPanel } from "./matter-preservation-panel";
+import { CaseSearchPanel } from "./case-search-panel";
 import { ApprovalsPanel } from "./approvals-panel";
 import { ExpressMiniCard, type SealContractItem, type ExpressItem } from "./info-extras";
 import { ArchiveStatusBanner } from "./archive-status-banner";
@@ -107,7 +109,7 @@ export type NotePayload = {
   createdAt: Date;
 };
 
-type TabKey = "info" | "documents" | "preservation" | "timeline" | `proc:${string}`;
+type TabKey = "info" | "documents" | "preservation" | "cases" | "timeline" | `proc:${string}`;
 
 export function MatterDetailTabs({
   matter,
@@ -266,6 +268,11 @@ export function MatterDetailTabs({
             )}
           </TabButton>
 
+          <TabButton active={tab === "cases"} onClick={() => setTab("cases")}>
+            <Scale className="h-3.5 w-3.5" strokeWidth={1.8} />
+            类案
+          </TabButton>
+
           <div className="flex-1" />
 
           <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
@@ -321,6 +328,13 @@ export function MatterDetailTabs({
               matterTitle={matter.title}
               preservations={preservations}
               users={colleagues}
+            />
+          )}
+          {tab === "cases" && (
+            <CaseSearchPanel
+              matterId={matter.id}
+              matterCategory={matter.category}
+              defaultCauseName={matter.cause?.name ?? null}
             />
           )}
           {tab === "timeline" && <TimelinePanel events={matter.timelineEvents} />}
