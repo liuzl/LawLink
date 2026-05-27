@@ -298,7 +298,7 @@ export function ClientSheet({ open, onOpenChange, editingClient }: Props) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field
                         label="姓名"
                         required
@@ -388,7 +388,7 @@ function Section({
         </div>
         {action}
       </header>
-      <div className="grid grid-cols-2 gap-3">{children}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
     </section>
   );
 }

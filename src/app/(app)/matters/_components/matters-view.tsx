@@ -222,7 +222,7 @@ export function MattersView({
             e.preventDefault();
             applyFilters();
           }}
-          className="relative flex min-w-64 flex-1 items-center gap-2"
+          className="relative flex min-w-0 sm:min-w-64 flex-1 items-center gap-2"
         >
           <div className="relative flex-1">
             <Search

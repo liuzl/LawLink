@@ -144,7 +144,7 @@ export function UploadDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">名称 *</Label>
               <Input

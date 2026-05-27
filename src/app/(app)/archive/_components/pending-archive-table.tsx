@@ -413,7 +413,7 @@ function BatchResultPanel({
 }) {
   return (
     <div className="space-y-3 text-xs">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-2">
           <div className="text-[10px] text-emerald-700">成功</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-700">{result.succeeded.length}</div>
@@ -765,7 +765,7 @@ function DetailDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <Field
               label="案件"
               value={`${record.matter.internalCode} · ${record.matter.title}`}

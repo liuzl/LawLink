@@ -163,7 +163,7 @@ export function CaseListCard({
           </div>
 
           {/* 右侧上下分：上=系统编号 + 状态 chip；下=主办律师 */}
-          <div className="flex w-52 shrink-0 flex-col items-end justify-between gap-2 text-[12.5px] text-muted-foreground">
+          <div className="hidden w-52 shrink-0 sm:flex flex-col items-end justify-between gap-2 text-[12.5px] text-muted-foreground">
             <div className="flex items-center gap-2">
               {internalCode && (
                 <span className="font-mono text-[12px]">{internalCode}</span>
@@ -174,6 +174,12 @@ export function CaseListCard({
               <span>主办：</span>
               <span className="text-foreground/80">{owner ?? "—"}</span>
             </div>
+          </div>
+          {/* 移动端：编号+状态+律师一行 */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:hidden">
+            {internalCode && <span className="font-mono text-[11px]">{internalCode}</span>}
+            <StatusChip label={status.label} dot={status.dot} />
+            <span>主办：{owner ?? "—"}</span>
           </div>
         </div>
       </Link>

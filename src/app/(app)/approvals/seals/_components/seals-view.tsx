@@ -76,7 +76,7 @@ export function SealsView({
       </div>
 
       {/* KPI 顶部 */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KpiCard
           icon={<CheckCircle2 className="h-3.5 w-3.5" />}
           label="本月已盖章"

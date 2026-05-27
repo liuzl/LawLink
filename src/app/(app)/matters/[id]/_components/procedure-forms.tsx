@@ -118,7 +118,7 @@ export function AddProcedureSheet({
             {/* 参与方式 */}
             <div className="space-y-2">
               <Label className="text-xs">参与方式</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {(["ENGAGED", "INFORMATIONAL"] as const).map((e) => (
                   <button
                     key={e}
@@ -166,7 +166,7 @@ export function AddProcedureSheet({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="案号">
                 <Input
                   className="font-mono"

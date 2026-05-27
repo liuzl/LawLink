@@ -449,7 +449,7 @@ export function IntakeSheet({
 
             {/* 2. 程序 + 我方诉讼地位 + 机构 */}
             <Section title="② 程序与诉讼地位" required>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="代理程序" required error={errors.firstProcedureType?.message}>
                   <Select
                     value={firstProcedureType ?? ""}
@@ -549,7 +549,7 @@ export function IntakeSheet({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="联系人姓名">
                   <Input placeholder="如：王经理" {...register("contactName")} />
                 </Field>
@@ -699,7 +699,7 @@ export function IntakeSheet({
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input
                           placeholder="姓名 / 名称 *（必填，用于利益冲突）"
                           {...register(`parties.${idx}.name`)}
@@ -747,7 +747,7 @@ export function IntakeSheet({
                 </div>
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="标的额（元）">
                   <Input
                     type="number"
@@ -788,7 +788,7 @@ export function IntakeSheet({
 
             {/* 6. 律师费 */}
             <Section title="⑥ 律师费">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {FEE_TYPES.map((t) => (
                   <button
                     key={t}
@@ -807,7 +807,7 @@ export function IntakeSheet({
               </div>
 
               {feeType === "FIXED" && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="总金额（元）" required>
                     <Input
                       type="number"
@@ -885,7 +885,7 @@ export function IntakeSheet({
               </Field>
 
               <Field label="共同参与律师（可多选，事后可改）">
-                <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
                   {colleagues
                     .filter((u) => u.id !== ownerUserId)
                     .map((u) => (

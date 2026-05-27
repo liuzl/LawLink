@@ -418,7 +418,7 @@ export function MatterSheet({
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input
                           placeholder="姓名 / 名称"
                           {...register(`parties.${idx}.name`)}
@@ -537,7 +537,7 @@ function Section({
         </div>
         {action}
       </header>
-      <div className="grid grid-cols-2 gap-3">{children}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
     </section>
   );
 }

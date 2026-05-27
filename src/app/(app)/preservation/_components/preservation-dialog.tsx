@@ -196,7 +196,7 @@ export function PreservationDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">保全金额（元）</Label>
               <Input
@@ -234,7 +234,7 @@ export function PreservationDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">申请日</Label>
               <Input
@@ -255,7 +255,7 @@ export function PreservationDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">保全期限（天）</Label>
               <Input
@@ -281,7 +281,7 @@ export function PreservationDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">保全法院</Label>
               <Input value={court} onChange={(e) => setCourt(e.target.value)} className="mt-1" />
@@ -414,7 +414,7 @@ export function RenewPreservationDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">续保天数</Label>
               <RadioChips

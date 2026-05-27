@@ -63,7 +63,7 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
       <button
         onClick={() => setSearchOpen(true)}
         className={cn(
-          "flex h-8 w-48 items-center gap-2 rounded-md border border-border bg-card px-3 text-left sm:w-72",
+          "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left sm:w-48 sm:flex-initial",
           "text-sm text-muted-foreground transition-colors hover:border-input hover:text-foreground"
         )}
         aria-label="全局搜索 (Cmd+K)"
@@ -75,7 +75,7 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
         </kbd>
       </button>
 
-      <div className="flex-1" />
+      <div className="flex-1 hidden sm:block" />
 
       {/* 工具按钮组 */}
       <div className="flex items-center gap-1.5">
@@ -88,8 +88,8 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
           )}
           title="利益冲突检索"
         >
-          <ShieldCheck className="h-3.5 w-3.5 text-primary" strokeWidth={1.8} />
-          利益冲突
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={1.8} />
+          <span className="hidden sm:inline">利益冲突</span>
         </button>
 
         <Button
@@ -98,10 +98,10 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
           className="h-8 gap-1.5 px-3 text-[13px]"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-          新建收案
+          <span className="hidden sm:inline">新建收案</span>
         </Button>
 
-        <div className="mx-0.5 h-4 w-px bg-border" />
+        <div className="mx-0.5 hidden h-4 w-px bg-border sm:block" />
 
         <NotificationPopover />
       </div>
@@ -120,7 +120,7 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
                 {initial}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[13px] font-medium">{displayName || "..."}</span>
+            <span className="hidden text-[13px] font-medium sm:inline">{displayName || "..."}</span>
             <ChevronDown className="h-3 w-3 text-muted-foreground" strokeWidth={2} />
           </button>
         </DropdownMenuTrigger>

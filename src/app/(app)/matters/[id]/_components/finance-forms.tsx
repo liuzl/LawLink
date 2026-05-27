@@ -672,7 +672,7 @@ function InvoiceOcrBlock({
         </Button>
       </div>
       {preview && (
-        <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 rounded border border-border bg-background p-2 text-[10.5px] text-muted-foreground">
+        <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 rounded border border-border bg-background p-2 text-[10.5px] text-muted-foreground">
           {preview.invoiceType && <div>类型：{preview.invoiceType}</div>}
           {preview.invoiceNumber && (
             <div>

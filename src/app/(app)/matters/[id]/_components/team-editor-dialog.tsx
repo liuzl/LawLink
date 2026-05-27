@@ -112,7 +112,7 @@ export function TeamEditorDialog({
 
           <div className="space-y-1.5">
             <Label className="text-xs">协办律师（可多选）</Label>
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
               {userOptions
                 .filter((u) => u.id !== ownerId)
                 .map((u) => (
@@ -132,7 +132,7 @@ export function TeamEditorDialog({
 
           <div className="space-y-1.5">
             <Label className="text-xs">助理（可多选）</Label>
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
               {userOptions
                 .filter((u) => u.id !== ownerId && !coLeads.includes(u.id))
                 .map((u) => (
