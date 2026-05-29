@@ -30,6 +30,15 @@ export function FinancePanel({
   const { stats } = finance;
   const outstanding = Math.max(stats.receivable - stats.received, 0);
 
+  const cards: { label: string; value: number; tone: StatTone }[] = [
+    { label: "合同额", value: stats.contractAmount, tone: "neutral" },
+    { label: "应收", value: stats.receivable, tone: "neutral" },
+    { label: "已收", value: stats.received, tone: "emerald" },
+    { label: "待收", value: outstanding, tone: "amber" },
+    { label: "支出", value: stats.cost, tone: "red" },
+    { label: "分成", value: stats.commission, tone: "neutral" }
+  ];
+
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-4 py-2">
@@ -47,13 +56,14 @@ export function FinancePanel({
             申请开票
           </Button>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] sm:grid-cols-4">
-          <Stat label="已收" value={stats.received} tone="emerald" />
-          <Stat label="应收" value={stats.receivable} tone="neutral" />
-          <Stat label="待收" value={outstanding} tone="amber" />
-          <Stat label="支出" value={stats.cost} tone="red" />
-        </div>
       </header>
+
+      {/* 紧凑指标卡（对照案件云"财务概览"指标看板） */}
+      <div className="grid grid-cols-3 gap-px border-b border-border bg-border sm:grid-cols-6">
+        {cards.map((c) => (
+          <StatCard key={c.label} label={c.label} value={c.value} tone={c.tone} />
+        ))}
+      </div>
 
       {received.length === 0 ? (
         <p className="py-6 text-center text-xs text-muted-foreground">
@@ -95,14 +105,16 @@ export function FinancePanel({
   );
 }
 
-function Stat({
+type StatTone = "emerald" | "neutral" | "amber" | "red";
+
+function StatCard({
   label,
   value,
   tone
 }: {
   label: string;
   value: number;
-  tone: "emerald" | "neutral" | "amber" | "red";
+  tone: StatTone;
 }) {
   const cls =
     tone === "emerald"
@@ -113,9 +125,13 @@ function Stat({
           ? "text-red-600"
           : "text-foreground";
   return (
-    <span className="text-muted-foreground">
-      {label}{" "}
-      <span className={`font-mono tabular ${cls}`}>{formatCurrency(value)}</span>
-    </span>
+    <div className="bg-card px-3 py-2.5">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className={`mt-1 font-mono text-[15px] leading-none tabular ${cls}`}>
+        {formatCurrency(value, { compact: true })}
+      </div>
+    </div>
   );
 }

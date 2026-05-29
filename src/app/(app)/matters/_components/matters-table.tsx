@@ -23,13 +23,45 @@ export type MatterRow = Matter & {
 };
 
 /**
+ * v0.28: 列设置。标题 + 状态恒显示，其余 6 列可由用户在列表页勾选显隐。
+ * 左侧网格列（收案时间/客户/案由/标的）支持动态显隐并重算列宽。
+ */
+export const MATTER_COLUMNS = [
+  { key: "intakeDate", label: "收案时间", side: "left", width: "max-content" },
+  { key: "client", label: "客户", side: "left", width: "18ch" },
+  { key: "cause", label: "案由", side: "left", width: "16ch" },
+  { key: "claim", label: "标的", side: "left", width: "minmax(0, 1fr)" },
+  { key: "code", label: "系统编号", side: "right", width: "" },
+  { key: "owner", label: "主办律师", side: "right", width: "" }
+] as const;
+
+export type MatterColumnKey = (typeof MATTER_COLUMNS)[number]["key"];
+
+export type ColumnVisibility = Record<MatterColumnKey, boolean>;
+
+const ALL_VISIBLE: ColumnVisibility = {
+  intakeDate: true,
+  client: true,
+  cause: true,
+  claim: true,
+  code: true,
+  owner: true
+};
+
+/**
  * v0.17: 案件列表卡片 - 统一两行 + 角落定位
  * 布局：
  *   左上: 标题 + 状态 chip          | 右上: 系统编号
  *   左下: 收案/委托/案由/标的 4 列   | 右下: 主办律师
  * 左侧 3px category 竖条作为唯一彩色装饰
  */
-export function MattersTable({ items }: { items: MatterRow[] }) {
+export function MattersTable({
+  items,
+  visible = ALL_VISIBLE
+}: {
+  items: MatterRow[];
+  visible?: ColumnVisibility;
+}) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card py-20 text-center">
@@ -66,6 +98,7 @@ export function MattersTable({ items }: { items: MatterRow[] }) {
           clientName={m.primaryClient?.name ?? null}
           causeText={m.cause?.name ?? m.causeFreeText ?? null}
           claimAmount={m.claimAmount ? Number(m.claimAmount) : null}
+          visible={visible}
         />
       ))}
     </ul>
@@ -92,7 +125,8 @@ export function CaseListCard({
   intakeDate,
   clientName,
   causeText,
-  claimAmount
+  claimAmount,
+  visible = ALL_VISIBLE
 }: {
   href: string;
   title: string;
@@ -105,7 +139,16 @@ export function CaseListCard({
   clientName: string | null;
   causeText: string | null;
   claimAmount: number | null;
+  visible?: ColumnVisibility;
 }) {
+  // 左侧网格列按显隐重算 grid-template-columns，保证对齐
+  const leftCols = MATTER_COLUMNS.filter(
+    (c) => c.side === "left" && visible[c.key]
+  );
+  const gridTemplate =
+    leftCols.length > 0
+      ? leftCols.map((c) => c.width).join(" ")
+      : "minmax(0, 1fr)";
   return (
     <li>
       <Link
@@ -129,57 +172,70 @@ export function CaseListCard({
               </span>
             </div>
 
-            {/* 左下：固定列宽 grid，4 项位置永远对齐 */}
-            {/* 收案时间 / 客户(8 字) / 案由(7 字) / 标的；列宽贴合内容减小 gap */}
-            <div
-              className="mt-2 grid items-baseline gap-x-6 gap-y-1 text-[12.5px]"
-              style={{ gridTemplateColumns: "max-content 18ch 16ch minmax(0, 1fr)" }}
-            >
-              <Cell label="收案时间" noTruncate>
-                {intakeDate ? (
-                  <span className="font-mono">
-                    {new Date(intakeDate).toLocaleDateString("zh-CN")}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground/60">—</span>
+            {/* 左下：列宽 grid（按显隐动态重算），位置永远对齐 */}
+            {leftCols.length > 0 && (
+              <div
+                className="mt-2 grid items-baseline gap-x-6 gap-y-1 text-[12.5px]"
+                style={{ gridTemplateColumns: gridTemplate }}
+              >
+                {visible.intakeDate && (
+                  <Cell label="收案时间" noTruncate>
+                    {intakeDate ? (
+                      <span className="font-mono">
+                        {new Date(intakeDate).toLocaleDateString("zh-CN")}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/60">—</span>
+                    )}
+                  </Cell>
                 )}
-              </Cell>
-              <Cell label="客户" title={clientName ?? undefined}>
-                {clientName ?? <span className="text-muted-foreground/60">—</span>}
-              </Cell>
-              <Cell label="案由" title={causeText ?? undefined}>
-                {causeText ?? <span className="text-muted-foreground/60">—</span>}
-              </Cell>
-              <Cell label="标的">
-                {claimAmount != null ? (
-                  <span className="font-mono">
-                    {formatCurrency(claimAmount, { compact: true })}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                {visible.client && (
+                  <Cell label="客户" title={clientName ?? undefined}>
+                    {clientName ?? <span className="text-muted-foreground/60">—</span>}
+                  </Cell>
                 )}
-              </Cell>
-            </div>
+                {visible.cause && (
+                  <Cell label="案由" title={causeText ?? undefined}>
+                    {causeText ?? <span className="text-muted-foreground/60">—</span>}
+                  </Cell>
+                )}
+                {visible.claim && (
+                  <Cell label="标的">
+                    {claimAmount != null ? (
+                      <span className="font-mono">
+                        {formatCurrency(claimAmount, { compact: true })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/60">—</span>
+                    )}
+                  </Cell>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 右侧上下分：上=系统编号 + 状态 chip；下=主办律师 */}
           <div className="hidden w-52 shrink-0 sm:flex flex-col items-end justify-between gap-2 text-[12.5px] text-muted-foreground">
             <div className="flex items-center gap-2">
-              {internalCode && (
+              {visible.code && internalCode && (
                 <span className="font-mono text-[12px]">{internalCode}</span>
               )}
               <StatusChip label={status.label} dot={status.dot} />
             </div>
-            <div className="flex items-baseline gap-1">
-              <span>主办：</span>
-              <span className="text-foreground/80">{owner ?? "—"}</span>
-            </div>
+            {visible.owner && (
+              <div className="flex items-baseline gap-1">
+                <span>主办：</span>
+                <span className="text-foreground/80">{owner ?? "—"}</span>
+              </div>
+            )}
           </div>
           {/* 移动端：编号+状态+律师一行 */}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:hidden">
-            {internalCode && <span className="font-mono text-[11px]">{internalCode}</span>}
+            {visible.code && internalCode && (
+              <span className="font-mono text-[11px]">{internalCode}</span>
+            )}
             <StatusChip label={status.label} dot={status.dot} />
-            <span>主办：{owner ?? "—"}</span>
+            {visible.owner && <span>主办：{owner ?? "—"}</span>}
           </div>
         </div>
       </Link>

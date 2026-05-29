@@ -530,6 +530,9 @@ model Matter {
   // v0.21: AI 文书审查历史
   reviewRecords    ReviewRecord[]
 
+  // v0.28: 自定义字段值（{ [CustomFieldDef.key]: string }）
+  customValues Json @default("{}")
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -539,6 +542,36 @@ model Matter {
   @@index([primaryClientId])
   @@index([category, status])
   @@index([causeId])
+}
+
+// v0.28: 自定义字段（JSON 列方案）。字段定义存表，值存于实体的 customValues JSON。
+enum CustomFieldEntity {
+  MATTER
+  CLIENT
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+}
+
+model CustomFieldDef {
+  id         String            @id @default(cuid())
+  entityType CustomFieldEntity
+  key        String // 稳定键，写入实体 customValues 的属性名
+  label      String
+  fieldType  CustomFieldType   @default(TEXT)
+  options    String[] // SELECT 类型的可选值
+  required   Boolean           @default(false)
+  order      Int               @default(0)
+  enabled    Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([entityType, key])
+  @@index([entityType, order])
 }
 
 model MatterMember {

@@ -19,7 +19,7 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
   ]);
   if (!matter) notFound();
 
-  const [finance, userOptions, notes, documents, intakeContracts, folders, templates, preservations, allColleagues, sealContracts, expresses, latestArchive] = await Promise.all([
+  const [finance, userOptions, notes, documents, intakeContracts, folders, templates, preservations, allColleagues, sealContracts, expresses, latestArchive, customFieldDefs] = await Promise.all([
     getMatterFinance(matter.id),
     prisma.user.findMany({
       where: { active: true },
@@ -112,7 +112,13 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
       }
     }),
     // v0.18: 最新归档申请状态（用于显示"归档中"/"已驳回" banner）
-    getLatestArchiveRecord(matter.id)
+    getLatestArchiveRecord(matter.id),
+    // v0.28: 案件自定义字段定义（启用项）
+    prisma.customFieldDef.findMany({
+      where: { entityType: "MATTER", enabled: true },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: { id: true, key: true, label: true, fieldType: true, options: true, required: true }
+    })
   ]);
 
   // v0.22: 本案 AI 审查总览（聚合 ReviewRecord）
@@ -159,6 +165,7 @@ export default async function MatterDetailPage({ params }: { params: { id: strin
         sealContracts={sealContracts}
         expresses={expresses}
         latestArchive={latestArchive}
+        customFieldDefs={customFieldDefs}
       />
     </div>
   );

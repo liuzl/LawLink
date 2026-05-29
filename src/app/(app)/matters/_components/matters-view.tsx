@@ -3,7 +3,7 @@
 import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Search, X, Clock, CheckCircle2, Archive, AlertCircle, FolderOpen } from "lucide-react";
+import { Plus, Search, X, Clock, CheckCircle2, Archive, AlertCircle, FolderOpen, SlidersHorizontal } from "lucide-react";
 import type { MatterCategory, ClientType, UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,34 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { matterCategoryLabel } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 import { IntakeSheet } from "@/app/(app)/intakes/_components/intake-sheet";
-import { MattersTable, type MatterRow } from "./matters-table";
+import {
+  MattersTable,
+  MATTER_COLUMNS,
+  type MatterRow,
+  type MatterColumnKey,
+  type ColumnVisibility
+} from "./matters-table";
 import { IntakesTable, type IntakeRow } from "./intakes-table";
+
+const COLUMN_PREF_KEY = "lawlink:matters:columns:v1";
+
+function defaultColumns(): ColumnVisibility {
+  return MATTER_COLUMNS.reduce((acc, c) => {
+    acc[c.key] = true;
+    return acc;
+  }, {} as ColumnVisibility);
+}
 
 export type ClientOption = { id: string; name: string; type: ClientType };
 export type ColleagueOption = { id: string; name: string; role: UserRole };
@@ -83,6 +106,29 @@ export function MattersView({
   const [dateFrom, setDateFrom] = useState<string>(initialFilters.from ?? "");
   const [dateTo, setDateTo] = useState<string>(initialFilters.to ?? "");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [columns, setColumns] = useState<ColumnVisibility>(defaultColumns);
+
+  // 列偏好持久化到 localStorage（避免 SSR 不一致：挂载后再读）
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLUMN_PREF_KEY);
+      if (raw) setColumns({ ...defaultColumns(), ...JSON.parse(raw) });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function toggleColumn(key: MatterColumnKey, value: boolean) {
+    setColumns((prev) => {
+      const next = { ...prev, [key]: value };
+      try {
+        localStorage.setItem(COLUMN_PREF_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   // ?new=1 自动打开
   useEffect(() => {
@@ -317,12 +363,37 @@ export function MattersView({
             清除筛选
           </Button>
         )}
+
+        {!isIntakeStyle && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1" title="列设置">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                列设置
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>显示列</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {MATTER_COLUMNS.map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  checked={columns[c.key]}
+                  onCheckedChange={(v) => toggleColumn(c.key, !!v)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {isIntakeStyle ? (
         <IntakesTable items={intakeData?.items ?? []} kind={tab as "intake" | "revision"} />
       ) : (
-        <MattersTable items={matterData?.items ?? []} />
+        <MattersTable items={matterData?.items ?? []} visible={columns} />
       )}
 
       <IntakeSheet

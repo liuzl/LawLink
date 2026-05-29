@@ -11,6 +11,8 @@ import {
   Plus,
   Scale,
   Building2,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { matterStatusLabel, procedureTypeLabel } from "@/lib/enums";
@@ -21,6 +23,9 @@ import { FinancePanel } from "./finance-panel";
 import { ProcedureContent } from "./procedure-content";
 import { ProcedureDocumentsSection } from "./procedure-documents-section";
 import { TimelinePanel } from "./timeline-panel";
+import { NotesPanel } from "./notes-panel";
+import { DocumentDraftDialog } from "./document-draft-dialog";
+import { CustomFieldsPanel } from "./custom-fields-panel";
 import { AddProcedureSheet } from "./procedure-forms";
 import { FoldersPanel } from "./folders-panel";
 import { LifecycleActions } from "./lifecycle-actions";
@@ -112,7 +117,7 @@ export type NotePayload = {
   createdAt: Date;
 };
 
-type TabKey = "info" | "documents" | "preservation" | "cases" | "companies" | "timeline" | `proc:${string}`;
+type TabKey = "info" | "documents" | "preservation" | "cases" | "companies" | "notes" | "timeline" | `proc:${string}`;
 
 export function MatterDetailTabs({
   matter,
@@ -129,7 +134,8 @@ export function MatterDetailTabs({
   currentUserRole,
   sealContracts,
   expresses,
-  latestArchive
+  latestArchive,
+  customFieldDefs
 }: {
   matter: MatterPayload;
   finance: FinancePayload;
@@ -154,10 +160,22 @@ export function MatterDetailTabs({
     archivedBy: string;
     missingItems: string[];
   } | null;
+  customFieldDefs: {
+    id: string;
+    key: string;
+    label: string;
+    fieldType: "TEXT" | "NUMBER" | "DATE" | "SELECT";
+    options: string[];
+    required: boolean;
+  }[];
 }) {
   const [tab, setTab] = useState<TabKey>("info");
   const [addProcOpen, setAddProcOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
+
+  const opposingName =
+    matter.parties.find((p) => p.role === "OPPOSING_PARTY")?.name ?? null;
 
   const engagedProcedures = matter.procedures
     .filter((p) => p.engagement === "ENGAGED")
@@ -178,6 +196,14 @@ export function MatterDetailTabs({
           {matter.title}
         </h1>
         <MatterStatusPill status={matter.status} />
+        <button
+          type="button"
+          onClick={() => setDraftOpen(true)}
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2.5 text-[12px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
+          AI 起草
+        </button>
         {currentUserRole && (
           <LifecycleActions
             matterId={matter.id}
@@ -303,6 +329,16 @@ export function MatterDetailTabs({
 
           <div className="flex-1" />
 
+          <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
+            <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} />
+            沟通
+            {notes.length > 0 && (
+              <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
+                {notes.length}
+              </span>
+            )}
+          </TabButton>
+
           <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
             <Clock className="h-3.5 w-3.5" strokeWidth={1.8} />
             时间线
@@ -326,6 +362,17 @@ export function MatterDetailTabs({
                   <ExpressMiniCard expresses={expresses} matterId={matter.id} />
                 </div>
               </div>
+              <CustomFieldsPanel
+                matterId={matter.id}
+                defs={customFieldDefs}
+                values={
+                  (matter.customValues &&
+                  typeof matter.customValues === "object" &&
+                  !Array.isArray(matter.customValues)
+                    ? (matter.customValues as Record<string, string>)
+                    : {})
+                }
+              />
             </div>
           )}
           {/* v0.27: 案卷材料 tab 内容不再渲染（材料挪到各程序下） */}
@@ -381,6 +428,7 @@ export function MatterDetailTabs({
                 }))}
             />
           )}
+          {tab === "notes" && <NotesPanel matterId={matter.id} notes={notes} />}
           {tab === "timeline" && <TimelinePanel events={matter.timelineEvents} />}
 
           {engagedProcedures.map((p) => {
@@ -422,6 +470,12 @@ export function MatterDetailTabs({
         matterId={matter.id}
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
+      />
+      <DocumentDraftDialog
+        open={draftOpen}
+        onOpenChange={setDraftOpen}
+        defaultSelf={matter.primaryClient?.name ?? null}
+        defaultOpposing={opposingName}
       />
     </div>
   );

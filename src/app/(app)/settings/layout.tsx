@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings, Users, Layers, ScrollText, KeyRound, Sparkles, Package } from "lucide-react";
+import { Settings, Users, Layers, ScrollText, KeyRound, Sparkles, Package, ListChecks } from "lucide-react";
 import { getSession } from "@/lib/auth/session";
 
 export default async function SettingsLayout({
@@ -41,6 +41,12 @@ export default async function SettingsLayout({
                   icon={<Layers className="h-3.5 w-3.5" />}
                 >
                   阶段模板
+                </SettingsNavLink>
+                <SettingsNavLink
+                  href="/settings/custom-fields"
+                  icon={<ListChecks className="h-3.5 w-3.5" />}
+                >
+                  自定义字段
                 </SettingsNavLink>
                 <SettingsNavLink
                   href="/settings/ai"
