@@ -22,7 +22,7 @@ import type {
   ProcedureType,
   LitigationStanding,
   FeeType,
-  ClientType,
+  PartyRole,
   UserRole
 } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,6 @@ import {
   procedureTypeLabel,
   litigationStandingLabel,
   feeTypeLabel,
-  clientTypeLabel,
   procedureToStandingOptions,
   userRoleLabel
 } from "@/lib/enums";
@@ -85,8 +84,6 @@ const CATEGORIES: MatterCategory[] = [
   "LEGAL_COUNSEL",
   "SPECIAL_PROJECT"
 ];
-
-const CLIENT_TYPES: ClientType[] = ["INDIVIDUAL", "COMPANY", "ORGANIZATION"];
 
 const FEE_TYPES: FeeType[] = ["FIXED", "CONTINGENCY"];
 
@@ -128,7 +125,23 @@ const defaults: IntakeCreateInput = {
   feeNote: "",
   ownerUserId: "",
   coUserIds: [],
-  parties: []
+  parties: [
+    {
+      role: "CLIENT_PARTY",
+      standing: undefined,
+      ordinal: 1,
+      partyType: "NATURAL_PERSON",
+      name: "",
+      idNumber: "",
+      enterpriseSocialCode: "",
+      enterpriseName: "",
+      phone: "",
+      address: "",
+      legalRep: "",
+      contactName: "",
+      notes: ""
+    }
+  ]
 };
 
 type Colleague = { id: string; name: string; role: UserRole };
@@ -183,12 +196,32 @@ export function IntakeSheet({
   const category = watch("category");
   const firstProcedureType = watch("firstProcedureType");
   const clientId = watch("clientId") ?? "";
-  const clientName = watch("clientName") ?? "";
-  const clientType = watch("clientType");
   const feeType = watch("feeType");
   const ownerUserId = watch("ownerUserId");
   const coUserIds = watch("coUserIds");
   const receivedAt = watch("receivedAt");
+
+  // 标题自动生成：填完当事人 + 案由后按「委托方 与 对方 案由」生成，用户手改后不再覆盖
+  const [titleTouched, setTitleTouched] = useState(false);
+  const [causeName, setCauseName] = useState("");
+  const watchedParties = watch("parties");
+  const watchedTitle = watch("title");
+  const watchedCauseFree = watch("causeFreeText");
+  useEffect(() => {
+    if (titleTouched) return;
+    const list = (watchedParties ?? []) as { role?: string; name?: string }[];
+    const clientNm = list.find((p) => p.role === "CLIENT_PARTY")?.name?.trim();
+    const oppNm = list.find((p) => p.role === "OPPOSING_PARTY")?.name?.trim();
+    const causeNm = (causeName || watchedCauseFree || "").trim();
+    if (!clientNm && !oppNm) return;
+    const suggested = [clientNm, oppNm ? `与 ${oppNm}` : "", causeNm]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (suggested && suggested !== (watchedTitle ?? "")) {
+      setValue("title", suggested, { shouldDirty: true });
+    }
+  }, [watchedParties, causeName, watchedCauseFree, titleTouched, watchedTitle, setValue]);
 
   // 当前类别下可选程序
   const procedureOptions: ProcedureType[] = useMemo(
@@ -251,6 +284,8 @@ export function IntakeSheet({
           : "收案已提交审批"
       );
       reset({ ...defaults, ownerUserId: session?.user?.id ?? "" });
+      setTitleTouched(false);
+      setCauseName("");
       setContracts([]);
       onOpenChange(false);
       if (res.id) router.push(`/intakes/${res.id}`);
@@ -262,17 +297,27 @@ export function IntakeSheet({
   }
 
   function onSubmit(values: IntakeCreateInput) {
-    // v0.17: 其他案件当事人必须填名称 + 证件号（用于利益冲突检索）
-    const missing = (values.parties ?? []).find(
-      (p) => !p.name?.trim() || !p.idNumber?.trim()
-    );
-    if (missing) {
-      toast.warning("当事人必填", {
-        description: "请为所有「其他案件当事人」填写姓名/名称和证件号（用于利益冲突检索），不需要的可删除该行"
-      });
+    // 委托方恒为 parties[0]（role=CLIENT_PARTY）：拆回顶层 client* 字段，其余进 parties。
+    // 名称 + 证件号必填由 zodResolver(partyInputSchema) 对每行统一校验。
+    const all = values.parties ?? [];
+    const client = all.find((p) => p.role === "CLIENT_PARTY");
+    if (!client || !client.name?.trim()) {
+      toast.warning("请填写委托方", { description: "委托方名称为必填" });
       return;
     }
-    startTransition(() => performSubmit(values));
+    const isOrg = client.partyType === "ORGANIZATION";
+    const payload: IntakeCreateInput = {
+      ...values,
+      clientName: client.name.trim(),
+      clientType: isOrg ? "COMPANY" : "INDIVIDUAL",
+      clientIdNumber: (isOrg ? client.enterpriseSocialCode : client.idNumber) ?? "",
+      clientAddress: client.address ?? "",
+      clientLegalRep: client.legalRep ?? "",
+      contactName: client.contactName ?? "",
+      contactPhone: client.phone ?? "",
+      parties: all.filter((p) => p.role !== "CLIENT_PARTY")
+    };
+    startTransition(() => performSubmit(payload));
   }
 
   function handleFiles(list: FileList | null) {
@@ -393,10 +438,11 @@ export function IntakeSheet({
     }
   }
 
-  function handleAiRecSelect(causeId: string, causeName: string) {
+  function handleAiRecSelect(causeId: string, causeNm: string) {
     setValue("causeId", causeId, { shouldDirty: true });
+    setCauseName(causeNm);
     setAiRecOpen(false);
-    toast.success("已选用 AI 推荐案由", { description: causeName });
+    toast.success("已选用 AI 推荐案由", { description: causeNm });
   }
 
   function handleAiRecRetry() {
@@ -413,19 +459,24 @@ export function IntakeSheet({
   }
 
   async function handlePickYuandian(candidate: EnterpriseSearchItem) {
+    // 委托方行恒为 parties[0]
     setValue("clientId", "", { shouldDirty: true });
-    setValue("clientName", candidate.name, { shouldDirty: true });
-    setValue("clientType", "COMPANY", { shouldDirty: true });
-    setValue("clientIdNumber", candidate.creditCode, { shouldDirty: true });
+    setValue("parties.0.partyType", "ORGANIZATION", { shouldDirty: true });
+    setValue("parties.0.name", candidate.name, { shouldDirty: true });
+    setValue("parties.0.enterpriseName", candidate.name, { shouldDirty: true });
+    setValue("parties.0.enterpriseSocialCode", candidate.creditCode, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
 
     const tid = toast.loading("正在获取企业详细信息…", { duration: 10_000 });
     try {
       const res = await getEnterpriseDetail(candidate.id);
       if (res.info) {
-        setValue("clientAddress", res.info.address, { shouldDirty: true });
-        setValue("clientLegalRep", res.info.legalRep, { shouldDirty: true });
-        if (res.info.legalRep && !watch("contactName")) {
-          setValue("contactName", res.info.legalRep, { shouldDirty: true });
+        setValue("parties.0.address", res.info.address, { shouldDirty: true });
+        setValue("parties.0.legalRep", res.info.legalRep, { shouldDirty: true });
+        if (res.info.legalRep && !watch("parties.0.contactName")) {
+          setValue("parties.0.contactName", res.info.legalRep, { shouldDirty: true });
         }
         toast.success(
           res.info.legalRep
@@ -455,21 +506,47 @@ export function IntakeSheet({
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
             {/* 1. 案件类别 */}
-            <Section title="① 案件类别" required>
-              <RadioChips
-                items={CATEGORIES.map((c) => ({
-                  value: c,
-                  label: matterCategoryLabel[c],
-                  accent: matterCategoryColor[c]
-                }))}
-                value={category}
-                onChange={(c) => setValue("category", c)}
-              />
+            <Section title="① 案件类别 + 案由" required>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="案件类别" required>
+                  <RadioChips
+                    items={CATEGORIES.map((c) => ({
+                      value: c,
+                      label: matterCategoryLabel[c],
+                      accent: matterCategoryColor[c]
+                    }))}
+                    value={category}
+                    onChange={(c) => setValue("category", c)}
+                  />
+                </Field>
+                <Field label="案由">
+                  <div className="flex items-stretch gap-1.5">
+                    <div className="flex-1">
+                      <CauseCombobox
+                        category={category}
+                        value={watch("causeId") || ""}
+                        onChange={(id, name) => {
+                          setValue("causeId", id, { shouldDirty: true });
+                          setCauseName(name);
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAiManualOpen(true)}
+                      className="shrink-0 rounded-md border border-border bg-background px-2.5 text-violet-600 hover:border-violet-400 hover:bg-violet-50"
+                      title="AI 推荐案由（手动输入案情）"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </button>
+                  </div>
+                </Field>
+              </div>
             </Section>
 
             {/* 2. 程序 + 我方诉讼地位 + 机构 */}
             <Section title="② 程序与诉讼地位" required>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Field label="代理程序" required error={errors.firstProcedureType?.message}>
                   <Select
                     value={firstProcedureType ?? ""}
@@ -510,99 +587,20 @@ export function IntakeSheet({
                     </SelectContent>
                   </Select>
                 </Field>
-              </div>
 
-              <Field label="争议解决机构 / 办理机关">
-                <Input
-                  placeholder="如：上海市浦东新区人民法院 / 上海仲裁委员会"
-                  {...register("firstAgency")}
-                />
-              </Field>
-            </Section>
-
-            {/* 3. 委托方 + 联系人 */}
-            <Section title="③ 委托方与联系人" required>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="性质" required>
-                  <Select
-                    value={clientType ?? "INDIVIDUAL"}
-                    onValueChange={(v) =>
-                      setValue("clientType", v as ClientType, { shouldDirty: true })
-                    }
-                  >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CLIENT_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {clientTypeLabel[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-
-                <Field label="委托方" required className="col-span-2">
-                  <ClientCombobox
-                    clientId={clientId}
-                    clientName={clientName}
-                    clientType={clientType ?? "INDIVIDUAL"}
-                    options={clientOptions}
-                    onPickExisting={(id, name) => {
-                      setValue("clientId", id, { shouldDirty: true });
-                      setValue("clientName", name, { shouldDirty: true });
-                    }}
-                    onTypeNew={(name) => {
-                      setValue("clientId", "", { shouldDirty: true });
-                      setValue("clientName", name, { shouldDirty: true });
-                    }}
-                    onPickYuandian={handlePickYuandian}
-                    onClear={() => {
-                      setValue("clientId", "", { shouldDirty: true });
-                      setValue("clientName", "", { shouldDirty: true });
-                      setValue("clientIdNumber", "", { shouldDirty: true });
-                      setValue("clientAddress", "", { shouldDirty: true });
-                      setValue("clientLegalRep", "", { shouldDirty: true });
-                    }}
+                <Field label="争议解决机构 / 办理机关">
+                  <Input
+                    placeholder="如：浦东法院 / 上海仲裁委"
+                    {...register("firstAgency")}
                   />
                 </Field>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="联系人姓名">
-                  <Input placeholder="如：王经理" {...register("contactName")} />
-                </Field>
-                <Field label="联系电话">
-                  <Input placeholder="如：13800138000" {...register("contactPhone")} />
-                </Field>
-              </div>
-
-              <input type="hidden" {...register("clientIdNumber")} />
-              <input type="hidden" {...register("clientAddress")} />
-              <input type="hidden" {...register("clientLegalRep")} />
-
-              {(watch("clientIdNumber") || watch("clientAddress") || watch("clientLegalRep")) && (
-                <div className="rounded-md border border-blue-200 bg-blue-50/50 p-2.5 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
-                  <div className="mb-1 font-medium">已自动填充企业信息：</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {watch("clientIdNumber") && (
-                      <div>信用代码：{watch("clientIdNumber")}</div>
-                    )}
-                    {watch("clientLegalRep") && (
-                      <div>法定代表人：{watch("clientLegalRep")}</div>
-                    )}
-                    {watch("clientAddress") && (
-                      <div>注册地址：{watch("clientAddress")}</div>
-                    )}
-                  </div>
-                </div>
-              )}
             </Section>
 
-            {/* 4. 其他案件当事人（紧挨委托方/联系人，便于一并核对） */}
+            {/* 3. 案件当事人（委托方 + 对方 + 第三人 合并） */}
             <Section
-              title="④ 其他案件当事人"
+              title="③ 案件当事人"
+              required
               headerAction={
                 <Button
                   type="button"
@@ -628,7 +626,7 @@ export function IntakeSheet({
                   }
                 >
                   <Plus className="h-3 w-3" />
-                  添加
+                  添加当事人
                 </Button>
               }
             >
@@ -673,73 +671,128 @@ export function IntakeSheet({
                 </div>
               )}
 
-              {parties.length === 0 ? (
-                <p className="rounded-md border border-dashed border-border bg-background py-3 text-center text-xs text-muted-foreground">
-                  暂无其他当事人，添加后可触发利益冲突检索
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {parties.map((p, idx) => (
+              <p className="text-[11px] text-muted-foreground">
+                委托方必填；对方 / 第三人用于利益冲突检索，所有当事人均需填写名称与证件号 / 信用代码。
+              </p>
+              <div className="space-y-2">
+                {parties.map((p, idx) => {
+                  const all = (watch("parties") ?? []) as { role?: string }[];
+                  const role = (all[idx]?.role as PartyRole) ?? "OPPOSING_PARTY";
+                  const isClient = role === "CLIENT_PARTY";
+                  const nth = all
+                    .slice(0, idx + 1)
+                    .filter((x) => (x.role ?? "OPPOSING_PARTY") === role).length;
+                  const label = isClient
+                    ? "委托方"
+                    : role === "THIRD_PARTY"
+                      ? `第三人 ${nth}`
+                      : `对方 ${nth}`;
+                  return (
                     <PartyCard
                       key={p.id}
                       index={idx}
                       fieldPrefix="parties"
-                      label={`当事人 ${p.ordinal}`}
+                      label={label}
+                      removable={!isClient}
                       onRemove={() => removeParty(idx)}
                       errors={errors as never}
+                      nameSlot={
+                        isClient ? (
+                          <ClientCombobox
+                            clientId={clientId}
+                            clientName={watch("parties.0.name") ?? ""}
+                            clientType={
+                              watch("parties.0.partyType") === "ORGANIZATION"
+                                ? "COMPANY"
+                                : "INDIVIDUAL"
+                            }
+                            options={clientOptions}
+                            onPickExisting={(id, name) => {
+                              setValue("clientId", id, { shouldDirty: true });
+                              setValue("parties.0.name", name, {
+                                shouldDirty: true,
+                                shouldValidate: true
+                              });
+                            }}
+                            onTypeNew={(name) => {
+                              setValue("clientId", "", { shouldDirty: true });
+                              setValue("parties.0.name", name, {
+                                shouldDirty: true,
+                                shouldValidate: true
+                              });
+                            }}
+                            onPickYuandian={handlePickYuandian}
+                            onClear={() => {
+                              setValue("clientId", "", { shouldDirty: true });
+                              setValue("parties.0.name", "", { shouldDirty: true });
+                              setValue("parties.0.idNumber", "", { shouldDirty: true });
+                              setValue("parties.0.enterpriseSocialCode", "", { shouldDirty: true });
+                              setValue("parties.0.enterpriseName", "", { shouldDirty: true });
+                              setValue("parties.0.address", "", { shouldDirty: true });
+                              setValue("parties.0.legalRep", "", { shouldDirty: true });
+                            }}
+                          />
+                        ) : undefined
+                      }
                       headerExtra={
-                        <Select
-                          value={watch(`parties.${idx}.standing`) ?? ""}
-                          onValueChange={(v) =>
-                            setValue(
-                              `parties.${idx}.standing`,
-                              v as LitigationStanding,
-                              { shouldDirty: true }
-                            )
-                          }
-                        >
-                          <SelectTrigger className="h-7 w-32 bg-background text-xs">
-                            <SelectValue placeholder="诉讼地位" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(Object.keys(litigationStandingLabel) as LitigationStanding[]).map(
-                              (s) => (
-                                <SelectItem key={s} value={s} className="text-xs">
-                                  {litigationStandingLabel[s]}
+                        isClient ? (
+                          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                            委托方
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={role}
+                              onValueChange={(v) =>
+                                setValue(`parties.${idx}.role`, v as PartyRole, {
+                                  shouldDirty: true
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-20 bg-background text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="OPPOSING_PARTY" className="text-xs">
+                                  对方
                                 </SelectItem>
-                              )
-                            )}
-                          </SelectContent>
-                        </Select>
+                                <SelectItem value="THIRD_PARTY" className="text-xs">
+                                  第三人
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={watch(`parties.${idx}.standing`) ?? ""}
+                              onValueChange={(v) =>
+                                setValue(`parties.${idx}.standing`, v as LitigationStanding, {
+                                  shouldDirty: true
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-28 bg-background text-xs">
+                                <SelectValue placeholder="诉讼地位" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(Object.keys(litigationStandingLabel) as LitigationStanding[]).map(
+                                  (s) => (
+                                    <SelectItem key={s} value={s} className="text-xs">
+                                      {litigationStandingLabel[s]}
+                                    </SelectItem>
+                                  )
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )
                       }
                     />
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </Section>
 
-            {/* 5. 案由 + 标的 + 收案时间 */}
-            <Section title="⑤ 案由与标的">
-              <Field label="案由">
-                <div className="flex items-stretch gap-1.5">
-                  <div className="flex-1">
-                    <CauseCombobox
-                      category={category}
-                      value={watch("causeId") || ""}
-                      onChange={(id) => setValue("causeId", id, { shouldDirty: true })}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setAiManualOpen(true)}
-                    className="shrink-0 rounded-md border border-border bg-background px-2.5 text-violet-600 hover:border-violet-400 hover:bg-violet-50"
-                    title="AI 推荐案由（手动输入案情）"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </button>
-                </div>
-              </Field>
-
+            {/* 4. 标的 + 收案时间 */}
+            <Section title="④ 标的与收案">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="标的额（元）">
                   <Input
@@ -780,7 +833,7 @@ export function IntakeSheet({
             </Section>
 
             {/* 6. 律师费 */}
-            <Section title="⑥ 律师费">
+            <Section title="⑤ 律师费">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {FEE_TYPES.map((t) => (
                   <button
@@ -856,7 +909,8 @@ export function IntakeSheet({
             </Section>
 
             {/* 7. 团队 */}
-            <Section title="⑦ 经办律师 + 共同律师" required>
+            <Section title="⑥ 经办律师" required>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="主办律师" required>
                 <Select
                   value={ownerUserId ?? ""}
@@ -877,8 +931,8 @@ export function IntakeSheet({
                 </Select>
               </Field>
 
-              <Field label="共同参与律师（可多选，事后可改）">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3">
+              <Field label="协办律师（可多选，事后可改）">
+                <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-background p-3 max-h-44 overflow-y-auto">
                   {colleagues
                     .filter((u) => u.id !== ownerUserId)
                     .map((u) => (
@@ -898,19 +952,29 @@ export function IntakeSheet({
                     ))}
                 </div>
               </Field>
+              </div>
             </Section>
 
             {/* 8. 描述 + 标题 */}
-            <Section title="⑧ 标题与描述">
+            <Section title="⑦ 标题与描述">
               <Field
                 label="案件标题"
-                hint="留空则按「{委托方} 与 {对方} {案由}」自动生成"
+                hint="已按「委托方 与 对方 案由」自动生成，可手动修改"
                 error={errors.title?.message}
               >
-                <Input
-                  placeholder="可留空 · 例：某建设工程合同纠纷"
-                  {...register("title")}
-                />
+                {(() => {
+                  const titleReg = register("title");
+                  return (
+                    <Input
+                      placeholder="可留空 · 例：某建设工程合同纠纷"
+                      {...titleReg}
+                      onChange={(e) => {
+                        titleReg.onChange(e);
+                        setTitleTouched(true);
+                      }}
+                    />
+                  );
+                })()}
               </Field>
 
               <Field label="描述">
@@ -924,7 +988,7 @@ export function IntakeSheet({
 
             {/* 9. 合同 */}
             <Section
-              title="⑨ 委托合同 / 相关附件"
+              title="⑧ 委托合同 / 相关附件"
               headerAction={
                 <>
                   <input

@@ -34,11 +34,24 @@ type Props = {
   label: string;       // 显示头："对方 1" / "第三人 2"
   onRemove: () => void;
   errors?: FieldErrors<Record<string, unknown>>;
-  /** 头部右侧额外 slot，常用于 intake 流程的诉讼地位下拉 */
+  /** 头部右侧额外 slot，常用于 intake 流程的角色 / 诉讼地位下拉 */
   headerExtra?: ReactNode;
+  /** false 时隐藏删除按钮（如委托方行恒存在）。默认 true */
+  removable?: boolean;
+  /** 提供时替换内置"姓名/名称"输入框（如委托方行注入客户选择器）。 */
+  nameSlot?: ReactNode;
 };
 
-export function PartyCard({ index, fieldPrefix, label, onRemove, errors, headerExtra }: Props) {
+export function PartyCard({
+  index,
+  fieldPrefix,
+  label,
+  onRemove,
+  errors,
+  headerExtra,
+  removable = true,
+  nameSlot
+}: Props) {
   const { register, watch, setValue } = useFormContext();
   const p = `${fieldPrefix}.${index}`;
   const partyType = (watch(`${p}.partyType`) as "NATURAL_PERSON" | "ORGANIZATION") ?? "NATURAL_PERSON";
@@ -128,7 +141,7 @@ export function PartyCard({ index, fieldPrefix, label, onRemove, errors, headerE
     <div className="rounded-lg border border-border bg-background px-3 py-2.5">
       {/* 头部：标签 + 类型切换 + headerExtra + 删除 */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
           <div className="flex items-center gap-1">
             <button
@@ -158,24 +171,30 @@ export function PartyCard({ index, fieldPrefix, label, onRemove, errors, headerE
           </div>
           {headerExtra}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onRemove}
-          className="h-6 w-6 shrink-0 p-0 text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        {removable && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="h-6 w-6 shrink-0 p-0 text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {/* 核心字段（常驻）：姓名/名称 + 必填证件 */}
       <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Input
-          className="sm:col-span-1"
-          placeholder={partyType === "ORGANIZATION" ? "公司 / 组织名称" : "姓名"}
-          {...register(`${p}.name`)}
-        />
+        {nameSlot ? (
+          <div className="sm:col-span-1">{nameSlot}</div>
+        ) : (
+          <Input
+            className="sm:col-span-1"
+            placeholder={partyType === "ORGANIZATION" ? "公司 / 组织名称" : "姓名"}
+            {...register(`${p}.name`)}
+          />
+        )}
 
         {partyType === "NATURAL_PERSON" ? (
           <Input
