@@ -9,7 +9,7 @@ export const intakeStatusSchema = z.enum([
   "NEEDS_REVISION"
 ]);
 
-export const feeTypeSchema = z.enum(["FIXED", "CONTINGENCY"]);
+export const feeTypeSchema = z.enum(["FIXED", "CONTINGENCY", "TIMED"]);
 
 export const clientTypeSchema = z.enum(["INDIVIDUAL", "COMPANY", "ORGANIZATION"]);
 
@@ -40,7 +40,11 @@ export const litigationStandingSchema = z.enum([
 
 export const intakeCreateSchema = z.object({
   // 基础
-  title: z.string().max(200).optional().or(z.literal("")),
+  // 案件名称去除所有空白字符（产品要求，避免列表/详情显示空格）
+  title: z.preprocess(
+    (v) => (typeof v === "string" ? v.replace(/\s+/g, "") : v),
+    z.string().max(200).optional().or(z.literal(""))
+  ),
   category: matterCategorySchema,
   causeId: z.string().cuid().optional().or(z.literal("")),
   causeFreeText: z.string().max(200).optional().or(z.literal("")),

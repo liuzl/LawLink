@@ -123,7 +123,8 @@ export const procedureTypeLabel: Record<ProcedureType, string> = {
 
 export const feeTypeLabel: Record<FeeType, string> = {
   FIXED: "固定收费",
-  CONTINGENCY: "风险代理"
+  CONTINGENCY: "风险代理",
+  TIMED: "计时收费"
 };
 
 export const invoiceRequestStatusLabel: Record<InvoiceRequestStatus, string> = {

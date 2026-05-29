@@ -39,7 +39,8 @@ function generateTitle(
   const left = clientName || "待补充委托方";
   const right = opposingNames.length > 0 ? opposingNames.join("、") : "待补充对方";
   const cause = causeName ?? "案件";
-  return `${left} 与 ${right} ${cause}`;
+  // 案件名称不含空格（产品要求，与 matterCreateSchema 去空白一致）
+  return `${left}与${right}${cause}`.replace(/\s+/g, "");
 }
 
 export async function listIntakes(input: Partial<IntakeListQuery> = {}) {

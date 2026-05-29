@@ -45,10 +45,8 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioChips } from "@/components/ui/radio-chips";
 import {
   matterCategoryLabel,
-  matterCategoryColor,
   procedureTypeLabel,
   litigationStandingLabel,
   feeTypeLabel,
@@ -85,7 +83,7 @@ const CATEGORIES: MatterCategory[] = [
   "SPECIAL_PROJECT"
 ];
 
-const FEE_TYPES: FeeType[] = ["FIXED", "CONTINGENCY"];
+const FEE_TYPES: FeeType[] = ["FIXED", "CONTINGENCY", "TIMED"];
 
 // 我方为被动方时，可上传起诉状/申请书 OCR 识别对方
 const RECEIVING_STANDINGS = new Set<LitigationStanding>([
@@ -128,6 +126,21 @@ const defaults: IntakeCreateInput = {
   parties: [
     {
       role: "CLIENT_PARTY",
+      standing: undefined,
+      ordinal: 1,
+      partyType: "NATURAL_PERSON",
+      name: "",
+      idNumber: "",
+      enterpriseSocialCode: "",
+      enterpriseName: "",
+      phone: "",
+      address: "",
+      legalRep: "",
+      contactName: "",
+      notes: ""
+    },
+    {
+      role: "OPPOSING_PARTY",
       standing: undefined,
       ordinal: 1,
       partyType: "NATURAL_PERSON",
@@ -214,10 +227,8 @@ export function IntakeSheet({
     const oppNm = list.find((p) => p.role === "OPPOSING_PARTY")?.name?.trim();
     const causeNm = (causeName || watchedCauseFree || "").trim();
     if (!clientNm && !oppNm) return;
-    const suggested = [clientNm, oppNm ? `与 ${oppNm}` : "", causeNm]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    // 案件名称不含空格（产品要求）
+    const suggested = `${clientNm ?? ""}${oppNm ? `与${oppNm}` : ""}${causeNm}`.replace(/\s+/g, "");
     if (suggested && suggested !== (watchedTitle ?? "")) {
       setValue("title", suggested, { shouldDirty: true });
     }
@@ -506,18 +517,24 @@ export function IntakeSheet({
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
             {/* 1. 案件类别 */}
-            <Section title="① 案件类别 + 案由" required>
+            <Section title="① 案件类别与案由" required>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="案件类别" required>
-                  <RadioChips
-                    items={CATEGORIES.map((c) => ({
-                      value: c,
-                      label: matterCategoryLabel[c],
-                      accent: matterCategoryColor[c]
-                    }))}
+                  <Select
                     value={category}
-                    onChange={(c) => setValue("category", c)}
-                  />
+                    onValueChange={(v) => setValue("category", v as MatterCategory)}
+                  >
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {matterCategoryLabel[c]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Field label="案由">
                   <div className="flex items-stretch gap-1.5">
@@ -834,7 +851,7 @@ export function IntakeSheet({
 
             {/* 6. 律师费 */}
             <Section title="⑤ 律师费">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {FEE_TYPES.map((t) => (
                   <button
                     key={t}
@@ -867,6 +884,27 @@ export function IntakeSheet({
                   <Field label="付款节点 / 分期约定">
                     <Input
                       placeholder="如：签约付 50%，开庭前付 30%，结案付 20%"
+                      {...register("feeSchedule")}
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {feeType === "TIMED" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="小时费率（元 / 小时）" required>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="font-mono"
+                      {...register("feeAmount", { valueAsNumber: true })}
+                    />
+                  </Field>
+                  <Field label="计费说明 / 结算周期">
+                    <Input
+                      placeholder="如：合伙人 2000 元/时、授薪律师 1000 元/时；按月结算"
                       {...register("feeSchedule")}
                     />
                   </Field>

@@ -87,6 +87,7 @@ enum LitigationStanding {
 enum FeeType {
   FIXED // 固定收费
   CONTINGENCY // 风险代理
+  TIMED // 计时收费
 }
 
 enum InvoiceType {
