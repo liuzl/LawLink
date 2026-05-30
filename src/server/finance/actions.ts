@@ -233,7 +233,7 @@ export async function getMatterFinance(matterId: string) {
   const session = await requireSession();
   await assertCanAccessMatter(session.user.id, session.user.role, matterId);
 
-  const [billings, entries, plans] = await Promise.all([
+  const [billings, entries, plans, issuedInvoices] = await Promise.all([
     prisma.billing.findMany({
       where: { matterId },
       orderBy: { createdAt: "desc" }
@@ -250,6 +250,11 @@ export async function getMatterFinance(matterId: string) {
       where: { matterId },
       include: { user: { select: { id: true, name: true, role: true } } },
       orderBy: { createdAt: "asc" }
+    }),
+    // 开票金额：已开具发票合计
+    prisma.invoiceRequest.findMany({
+      where: { matterId, status: "ISSUED" },
+      select: { amount: true }
     })
   ]);
 
@@ -262,7 +267,8 @@ export async function getMatterFinance(matterId: string) {
     received: sum((e) => e.type === "RECEIVED"),
     refund: sum((e) => e.type === "REFUND"),
     cost: sum((e) => e.type === "COST"),
-    commission: sum((e) => e.type === "COMMISSION")
+    commission: sum((e) => e.type === "COMMISSION"),
+    invoiced: issuedInvoices.reduce((acc, i) => acc + Number(i.amount), 0)
   };
 
   return { billings, entries, plans, stats };

@@ -1,0 +1,16 @@
+-- CreateEnum
+CREATE TYPE "BarFilingType" AS ENUM ('NONE', 'COLLECTIVE', 'SENSITIVE', 'MAJOR', 'OTHER');
+
+-- AlterEnum (PostgreSQL 12+ 支持单次迁移多值)
+ALTER TYPE "PartyType" ADD VALUE 'COMPANY';
+ALTER TYPE "PartyType" ADD VALUE 'PARTNERSHIP';
+ALTER TYPE "PartyType" ADD VALUE 'INDIVIDUAL_BUSINESS';
+ALTER TYPE "PartyType" ADD VALUE 'INSTITUTION';
+ALTER TYPE "PartyType" ADD VALUE 'SOCIAL_ORG';
+ALTER TYPE "PartyType" ADD VALUE 'GOVERNMENT';
+ALTER TYPE "PartyType" ADD VALUE 'OTHER_ORG';
+
+-- AlterTable
+ALTER TABLE "Intake" ADD COLUMN     "barFiling" "BarFilingType",
+ADD COLUMN     "counterclaim" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "jurisdiction" TEXT;

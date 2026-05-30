@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useTransition } from "react";
-import { Check, ChevronsUpDown, Plus, Users, Building2, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -124,8 +124,7 @@ export function ClientCombobox({
           )}
         >
           <span className="flex items-center gap-1.5 truncate">
-            <Users className="h-3.5 w-3.5 shrink-0 opacity-60" />
-            {display || "搜索或直接输入委托方名字"}
+            {display || "搜索或直接输入名称"}
             {clientId && (
               <span className="ml-1 rounded-sm bg-primary/15 px-1 text-[10px] text-primary">
                 已建档

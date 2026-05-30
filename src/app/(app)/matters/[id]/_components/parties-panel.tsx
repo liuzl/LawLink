@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, IdCard, Phone, MapPin, UserCog } from "lucide-react";
-import { clientTypeLabel, litigationStandingLabel } from "@/lib/enums";
+import { clientTypeLabel, litigationStandingLabel, partyTypeLabel } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 import type { MatterPayload } from "./matter-detail-tabs";
 
@@ -100,10 +100,10 @@ function ClientLinkRow({
 }
 
 function PartyRowItem({ party, roleKey }: { party: PartyRow; roleKey: string }) {
-  const isOrg = party.partyType === "ORGANIZATION";
+  const isOrg = party.partyType !== "NATURAL_PERSON";
   const standing = party.standing ? litigationStandingLabel[party.standing] : null;
   const idValue = isOrg ? party.enterpriseSocialCode : party.idNumber;
-  const typeLabel = isOrg ? "单位" : "自然人";
+  const typeLabel = partyTypeLabel[party.partyType];
 
   const details: { icon: React.ReactNode; text: string; mono?: boolean }[] = [];
   if (idValue) details.push({ icon: <IdCard className="h-3 w-3" />, text: idValue, mono: true });

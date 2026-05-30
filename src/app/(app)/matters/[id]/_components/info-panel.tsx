@@ -3,16 +3,12 @@
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  matterCategoryLabel,
-  matterStatusLabel,
-  litigationStandingLabel
-} from "@/lib/enums";
+import { matterCategoryLabel, matterStatusLabel } from "@/lib/enums";
 import { formatDate, cn } from "@/lib/utils";
 import type { MatterPayload, UserOption, FinancePayload } from "./matter-detail-tabs";
 import { TeamEditorDialog } from "./team-editor-dialog";
-import { PartiesPanel } from "./parties-panel";
 import { AddReminderDialog } from "./add-reminder-dialog";
+import { RelatedMattersField } from "./related-matters-field";
 
 export function InfoPanel({
   matter,
@@ -50,22 +46,10 @@ export function InfoPanel({
   const lead = sortedMembers.find((m) => m.role === "LEAD");
   const others = sortedMembers.filter((m) => m.role !== "LEAD");
 
-  // 取第一个 ENGAGED 程序的 caseNumber 用作展示（程序级字段如法院/法官/诉讼地位
-  // 已不在本卡展示，请到对应程序 tab 查看）
-  const firstProc = matter.procedures.find((p) => p.engagement === "ENGAGED");
-  const caseNumber = firstProc?.caseNumber ?? null;
-
   const primaryClientName = matter.primaryClient?.name
     ?? matter.clientLinks.find((cl) => cl.isPrimary)?.client.name
     ?? matter.clientLinks[0]?.client.name
     ?? null;
-
-  const opposingNames = matter.parties
-    .filter((p) => p.role === "OPPOSING_PARTY")
-    .map((p) => p.name);
-  const thirdNames = matter.parties
-    .filter((p) => p.role === "THIRD_PARTY")
-    .map((p) => p.name);
 
   // 重要时限及提醒：合并 期限 + 开庭 + 任务（未完成且有 dueAt）
   const upcomingTasks = matter.tasks
@@ -102,9 +86,36 @@ export function InfoPanel({
       : others
           .map((m) => `${m.user.name}（${m.role === "CO_LEAD" ? "协办" : "助理"}）`)
           .join("，");
-  const ourStandingLabel = matter.ourStanding
-    ? litigationStandingLabel[matter.ourStanding]
-    : "—";
+  // 客户明细
+  const client = matter.primaryClient;
+  const clientContact = client?.contacts?.[0] ?? null;
+  const clientId = client?.idNumber ?? null;
+  const clientContactName = clientContact?.name ?? null;
+  const clientPhone = clientContact?.phone ?? client?.phone ?? null;
+
+  // 其他案件当事人（相对方 / 第三人）
+  const otherParties = matter.parties
+    .filter((p) => p.role === "OPPOSING_PARTY" || p.role === "THIRD_PARTY")
+    .map((p) => ({
+      id: p.id,
+      label: p.role === "THIRD_PARTY" ? "第三人" : "相对方",
+      name: p.name,
+      idNumber:
+        p.partyType !== "NATURAL_PERSON" ? p.enterpriseSocialCode : p.idNumber,
+      contactName: p.contactName,
+      phone: p.phone
+    }));
+
+  // 关联案件（双向合并去重）
+  const relatedMatters = [
+    ...matter.linksFrom.map((l) => l.relatedMatter),
+    ...matter.linksTo.map((l) => l.matter)
+  ].filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
+
+  // 财务：开票 / 回款
+  const fmtMoney = (n: number) =>
+    n ? `¥${n.toLocaleString()}` : "¥0";
+  const counterclaim = matter.intake?.counterclaim ?? false;
 
   return (
     <div className="space-y-4">
@@ -123,37 +134,21 @@ export function InfoPanel({
           </Button>
         </header>
         <div className="overflow-hidden rounded-b-lg">
+          {/* 行1：系统编号 | 收案时间 | 案件类型 | 案件名称（更宽）*/}
           <InfoRow>
             <Pair label="系统编号">
               <span className="font-mono tabular">{matter.internalCode}</span>
             </Pair>
+            <Pair label="收案时间">{matter.intakeDate ? formatDate(matter.intakeDate) : "—"}</Pair>
+            <Pair label="案件类型">{matterCategoryLabel[matter.category]}</Pair>
             <Pair label="案件名称" grow>
               <span className="font-medium">{matter.title || "—"}</span>
             </Pair>
-            <Pair label="类型">{matterCategoryLabel[matter.category]}</Pair>
           </InfoRow>
+          {/* 行2：案由 | 标的 | 是否反诉 | 案件状态 */}
           <InfoRow>
-            <Pair label="客户" grow>
-              {primaryClientName ?? "—"}
-            </Pair>
-            <Pair label="案号">
-              <span className="font-mono tabular">{caseNumber ?? "—"}</span>
-            </Pair>
-          </InfoRow>
-          <InfoRow>
-            <Pair label="案由" grow>
-              {matter.cause?.name ?? matter.causeFreeText ?? "—"}
-            </Pair>
-            <Pair label="状态">
-              <span className="inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-0 text-[11px] text-primary">
-                {matterStatusLabel[matter.status]}
-              </span>
-            </Pair>
-          </InfoRow>
-          <InfoRow>
-            <Pair label="收案日">{matter.intakeDate ? formatDate(matter.intakeDate) : "—"}</Pair>
-            <Pair label="我方地位">{ourStandingLabel}</Pair>
-            <Pair label="标的额">
+            <Pair label="案由">{matter.cause?.name ?? matter.causeFreeText ?? "—"}</Pair>
+            <Pair label="标的">
               {matter.claimAmount ? (
                 <span className="font-mono tabular">
                   ¥{Number(matter.claimAmount).toLocaleString()}
@@ -162,38 +157,60 @@ export function InfoPanel({
                 "—"
               )}
             </Pair>
-          </InfoRow>
-          <InfoRow>
-            <Pair label="主办律师">{lead ? lead.user.name : "—"}</Pair>
-            <Pair label="协办" grow>
-              {coLabel}
+            <Pair label="是否反诉">{counterclaim ? "是" : "否"}</Pair>
+            <Pair label="案件状态">
+              <span className="inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-0 text-[11px] text-primary">
+                {matterStatusLabel[matter.status]}
+              </span>
             </Pair>
           </InfoRow>
-          {opposingNames.length > 0 && (
-            <InfoRow>
-              <Pair label="相对方" grow>
-                {opposingNames.join("、")}
+          {/* 行3：主办律师 | 协办律师/助理 | 开票金额 | 回款金额 */}
+          <InfoRow>
+            <Pair label="主办律师">{lead ? lead.user.name : "—"}</Pair>
+            <Pair label="协办 / 助理">{coLabel}</Pair>
+            <Pair label="开票金额">
+              <span className="font-mono tabular">{fmtMoney(finance.stats.invoiced)}</span>
+            </Pair>
+            <Pair label="回款金额">
+              <span className="font-mono tabular">{fmtMoney(finance.stats.received)}</span>
+            </Pair>
+          </InfoRow>
+          {/* 行4：客户 | 证件号码 | 联系人 | 联系电话 */}
+          <InfoRow>
+            <Pair label="客户">{primaryClientName ?? "—"}</Pair>
+            <Pair label="证件号码">
+              <span className="font-mono tabular">{clientId ?? "—"}</span>
+            </Pair>
+            <Pair label="联系人">{clientContactName ?? "—"}</Pair>
+            <Pair label="联系电话">
+              <span className="font-mono tabular">{clientPhone ?? "—"}</span>
+            </Pair>
+          </InfoRow>
+          {/* 行5：其他案件当事人（每人一行）*/}
+          {otherParties.map((op) => (
+            <InfoRow key={op.id}>
+              <Pair label={op.label}>{op.name || "—"}</Pair>
+              <Pair label="证件号码">
+                <span className="font-mono tabular">{op.idNumber || "—"}</span>
+              </Pair>
+              <Pair label="联系人">{op.contactName || "—"}</Pair>
+              <Pair label="联系电话">
+                <span className="font-mono tabular">{op.phone || "—"}</span>
               </Pair>
             </InfoRow>
-          )}
-          {thirdNames.length > 0 && (
-            <InfoRow>
-              <Pair label="第三人" grow>
-                {thirdNames.join("、")}
-              </Pair>
-            </InfoRow>
-          )}
+          ))}
+          {/* 行6：关联案件 */}
+          <InfoRow>
+            <Pair label="关联案件" grow>
+              <RelatedMattersField matterId={matter.id} related={relatedMatters} />
+            </Pair>
+          </InfoRow>
         </div>
       </section>
 
-      {/* —— 下：案件当事人（左，列表）+ 重要时限（右）—— */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <PartiesPanel matter={matter} />
-        </div>
-
-        {/* —— 重要时限及提醒 mini —— */}
-        <section className="rounded-lg border border-border bg-card lg:col-span-4">
+      {/* —— 重要时限及提醒 —— */}
+      <div className="grid grid-cols-1 gap-4">
+        <section className="rounded-lg border border-border bg-card">
           <header className="flex items-center justify-between border-b border-border px-4 py-2">
             <span className="text-[13px] font-medium">
               重要时限及提醒

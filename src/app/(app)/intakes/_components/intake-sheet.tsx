@@ -15,7 +15,7 @@ import {
   X,
   CalendarDays,
   ScanLine,
-  Sparkles
+  ChevronDown
 } from "lucide-react";
 import type {
   MatterCategory,
@@ -23,7 +23,8 @@ import type {
   LitigationStanding,
   FeeType,
   PartyRole,
-  UserRole
+  UserRole,
+  BarFilingType
 } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,14 +46,22 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   matterCategoryLabel,
   procedureTypeLabel,
   litigationStandingLabel,
   feeTypeLabel,
   procedureToStandingOptions,
-  userRoleLabel
+  userRoleLabel,
+  barFilingLabel,
+  BAR_FILING_OPTIONS,
+  matterCategoryKind,
+  PROJECT_BUSINESS_TYPES,
+  COUNSEL_TYPES,
+  type CategoryKind
 } from "@/lib/enums";
+import { agencyOptions } from "@/lib/china-regions";
 import {
   proceduresByCategory,
   suggestHandlingAgency
@@ -61,7 +70,11 @@ import { intakeCreateSchema, type IntakeCreateInput } from "@/server/intakes/sch
 import { createIntake } from "@/server/intakes/actions";
 import { uploadDocument } from "@/server/documents/actions";
 import { parsePleading } from "@/server/ai/parse-pleading";
-import { PartyCard, PARTY_GRID } from "@/app/(app)/matters/_components/party-card";
+import {
+  PartyCard,
+  PARTY_GRID,
+  PARTY_GRID_NO_STANDING
+} from "@/app/(app)/matters/_components/party-card";
 import {
   recommendCause,
   type CauseRecommendation
@@ -73,6 +86,7 @@ import { CauseAiManualDialog } from "@/app/(app)/matters/_components/cause-ai-ma
 import type { ClientOption } from "@/app/(app)/matters/_components/matters-view";
 import { ClientCombobox } from "./client-combobox";
 import { CauseRecommendationDialog } from "./cause-recommendation-dialog";
+import { JurisdictionSelect } from "./jurisdiction-select";
 
 const CATEGORIES: MatterCategory[] = [
   "CIVIL_COMMERCIAL",
@@ -108,9 +122,12 @@ const defaults: IntakeCreateInput = {
   receivedAt: new Date(),
   firstProcedureType: undefined,
   firstAgency: "",
+  jurisdiction: "",
   ourStanding: undefined,
   claimAmount: undefined,
   claimDescription: "",
+  barFiling: undefined,
+  counterclaim: false,
   clientId: "",
   clientName: "",
   clientType: "INDIVIDUAL",
@@ -213,6 +230,14 @@ export function IntakeSheet({
   const ownerUserId = watch("ownerUserId");
   const coUserIds = watch("coUserIds");
   const receivedAt = watch("receivedAt");
+  const jurisdiction = watch("jurisdiction") ?? "";
+  // 争议解决机构按管辖地匹配
+  const agencyOpts = useMemo(() => agencyOptions(jurisdiction), [jurisdiction]);
+
+  // v0.31: 案件类别决定表单结构（诉讼/仲裁 vs 非诉/专项 vs 顾问）
+  const kind: CategoryKind = matterCategoryKind(category);
+  const nameLabel =
+    kind === "counsel" ? "顾问事项名称" : kind === "project" ? "项目名称" : "案件名称";
 
   // 标题自动生成：填完当事人 + 案由后按「委托方 与 对方 案由」生成，用户手改后不再覆盖
   const [titleTouched, setTitleTouched] = useState(false);
@@ -245,6 +270,11 @@ export function IntakeSheet({
     () => procedureToStandingOptions(firstProcedureType, "ours"),
     [firstProcedureType]
   );
+  // 相对方 / 第三人 诉讼地位也随当前程序联动
+  const oppositeStandingOptions: LitigationStanding[] = useMemo(
+    () => procedureToStandingOptions(firstProcedureType, "opposite"),
+    [firstProcedureType]
+  );
 
   // 切类别时如果当前程序不在新类别列表里，清掉
   useEffect(() => {
@@ -253,6 +283,33 @@ export function IntakeSheet({
       setValue("ourStanding", undefined);
     }
   }, [category, firstProcedureType, procedureOptions, setValue]);
+
+  // v0.31: 切类别时同步当事人行
+  // 顾问 / 非诉 / 专项：默认只留委托方一行（相对方按需添加）
+  // 诉讼/仲裁：确保至少有一个相对方行
+  useEffect(() => {
+    const cur = (watch("parties") ?? []) as { role?: string }[];
+    if (kind === "counsel" || kind === "project") {
+      for (let i = cur.length - 1; i >= 1; i--) removeParty(i);
+    } else if (!cur.some((x) => x.role === "OPPOSING_PARTY")) {
+      appendParty({
+        role: "OPPOSING_PARTY",
+        standing: undefined,
+        ordinal: cur.length + 1,
+        partyType: "NATURAL_PERSON",
+        name: "",
+        idNumber: "",
+        enterpriseSocialCode: "",
+        enterpriseName: "",
+        phone: "",
+        address: "",
+        legalRep: "",
+        contactName: "",
+        notes: ""
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
 
   // 设默认 owner
   useEffect(() => {
@@ -499,6 +556,195 @@ export function IntakeSheet({
     }
   }
 
+  // 当事人/相关方录入表格（按类别复用，诉讼/仲裁含诉讼地位列）
+  function renderParties(mode: CategoryKind) {
+    const showStanding = mode === "litigation";
+    const grid = showStanding ? PARTY_GRID : PARTY_GRID_NO_STANDING;
+    const clientLabel =
+      mode === "counsel" ? "顾问单位" : mode === "project" ? "委托方" : "客户";
+    const oppLabel = mode === "project" ? "交易相对方" : "相对方";
+    return (
+      <div className="overflow-x-auto">
+        <div className={cn("space-y-1.5", showStanding ? "min-w-[880px]" : "min-w-[760px]")}>
+          {/* 表头 */}
+          <div
+            className={cn(
+              grid,
+              "px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            )}
+          >
+            <span>角色</span>
+            <span>主体类型</span>
+            <span>姓名 / 名称</span>
+            <span>证件号 / 信用代码</span>
+            <span>联系人</span>
+            <span>联系电话</span>
+            {showStanding && <span>诉讼地位</span>}
+            <span className="text-right">操作</span>
+          </div>
+
+          {parties.map((p, idx) => {
+            const all = (watch("parties") ?? []) as { role?: string }[];
+            const role = (all[idx]?.role as PartyRole) ?? "OPPOSING_PARTY";
+            const isClient = role === "CLIENT_PARTY";
+            // 顾问类只显示委托方
+            if (mode === "counsel" && !isClient) return null;
+            const ourStanding = watch("ourStanding");
+            return (
+              <PartyCard
+                key={p.id}
+                index={idx}
+                fieldPrefix="parties"
+                showStanding={showStanding}
+                removable={!isClient}
+                onRemove={() => removeParty(idx)}
+                errors={errors as never}
+                roleSlot={
+                  isClient ? (
+                    <div className="flex h-8 w-full items-center justify-center rounded-sm border border-primary/30 bg-primary/10 text-[11px] font-medium text-primary">
+                      {clientLabel}
+                    </div>
+                  ) : (
+                    <Select
+                      value={role}
+                      onValueChange={(v) =>
+                        setValue(`parties.${idx}.role`, v as PartyRole, { shouldDirty: true })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OPPOSING_PARTY" className="text-xs">
+                          {oppLabel}
+                        </SelectItem>
+                        <SelectItem value="THIRD_PARTY" className="text-xs">
+                          {mode === "project" ? "其他相关方" : "第三人"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
+                }
+                standingSlot={
+                  !showStanding ? undefined : isClient ? (
+                    <Select
+                      value={ourStanding ?? ""}
+                      onValueChange={(v) =>
+                        setValue("ourStanding", v as LitigationStanding, { shouldDirty: true })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
+                        <SelectValue placeholder="诉讼地位（可选）" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(ourStandingOptions.length
+                          ? ourStandingOptions
+                          : (Object.keys(litigationStandingLabel) as LitigationStanding[])
+                        ).map((s) => (
+                          <SelectItem key={s} value={s} className="text-xs">
+                            {litigationStandingLabel[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select
+                      value={watch(`parties.${idx}.standing`) ?? ""}
+                      onValueChange={(v) =>
+                        setValue(`parties.${idx}.standing`, v as LitigationStanding, {
+                          shouldDirty: true
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
+                        <SelectValue placeholder="诉讼地位" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {oppositeStandingOptions.map((s) => (
+                          <SelectItem key={s} value={s} className="text-xs">
+                            {litigationStandingLabel[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                }
+                nameSlot={
+                  isClient ? (
+                    <ClientCombobox
+                      triggerClassName="h-8 text-sm"
+                      clientId={clientId}
+                      clientName={watch("parties.0.name") ?? ""}
+                      clientType={
+                        watch("parties.0.partyType") === "ORGANIZATION"
+                          ? "COMPANY"
+                          : "INDIVIDUAL"
+                      }
+                      options={clientOptions}
+                      onPickExisting={(id, name) => {
+                        setValue("clientId", id, { shouldDirty: true });
+                        setValue("parties.0.name", name, {
+                          shouldDirty: true,
+                          shouldValidate: true
+                        });
+                      }}
+                      onTypeNew={(name) => {
+                        setValue("clientId", "", { shouldDirty: true });
+                        setValue("parties.0.name", name, {
+                          shouldDirty: true,
+                          shouldValidate: true
+                        });
+                      }}
+                      onPickYuandian={handlePickYuandian}
+                      onClear={() => {
+                        setValue("clientId", "", { shouldDirty: true });
+                        setValue("parties.0.name", "", { shouldDirty: true });
+                        setValue("parties.0.idNumber", "", { shouldDirty: true });
+                        setValue("parties.0.enterpriseSocialCode", "", { shouldDirty: true });
+                        setValue("parties.0.enterpriseName", "", { shouldDirty: true });
+                        setValue("parties.0.address", "", { shouldDirty: true });
+                        setValue("parties.0.legalRep", "", { shouldDirty: true });
+                      }}
+                    />
+                  ) : undefined
+                }
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const addPartyBtn = (label: string) => (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-7 gap-1"
+      onClick={() =>
+        appendParty({
+          role: "OPPOSING_PARTY",
+          standing: undefined,
+          ordinal: parties.length + 1,
+          partyType: "NATURAL_PERSON",
+          name: "",
+          idNumber: "",
+          enterpriseSocialCode: "",
+          enterpriseName: "",
+          phone: "",
+          address: "",
+          legalRep: "",
+          contactName: "",
+          notes: ""
+        })
+      }
+    >
+      <Plus className="h-3 w-3" />
+      {label}
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[88vh] w-[92vw] max-w-4xl flex-col gap-0 p-0">
@@ -512,10 +758,10 @@ export function IntakeSheet({
         <FormProvider {...methods}>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-            {/* 1. 基本案情：类别/案由 + 程序/地位/机构 + 标的 + 经办 + 案件名称 合并 */}
-            <Section title="① 基本案情" required>
-              {/* 案件类别 + 案由（左半）| 案件名称（右半）*/}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            {/* ① 基本信息（共用：类别 / 名称 / 收案 / 经办）*/}
+            <Section title="① 基本信息" required>
+              {/* 案件类别 | 名称 | 收案时间 */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[6fr_18fr_8fr]">
                 <Field label="案件类别" required>
                   <Select
                     value={category}
@@ -533,39 +779,12 @@ export function IntakeSheet({
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label="案由">
-                  <div className="flex items-stretch gap-1.5">
-                    <div className="flex-1">
-                      <CauseCombobox
-                        category={category}
-                        value={watch("causeId") || ""}
-                        onChange={(id, name) => {
-                          setValue("causeId", id, { shouldDirty: true });
-                          setCauseName(name);
-                        }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAiManualOpen(true)}
-                      className="shrink-0 rounded-md border border-border bg-background px-2.5 text-violet-600 hover:border-violet-400 hover:bg-violet-50"
-                      title="AI 推荐案由（手动输入案情）"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </button>
-                  </div>
-                </Field>
-                <Field
-                  label="案件名称"
-                  className="sm:col-span-2"
-                  hint="已按「客户与相对方案由」自动生成，可手动修改"
-                  error={errors.title?.message}
-                >
+                <Field label={nameLabel} error={errors.title?.message}>
                   {(() => {
                     const titleReg = register("title");
                     return (
                       <Input
-                        placeholder="可留空 · 例：某建设工程合同纠纷"
+                        placeholder="留空时自动生成"
                         {...titleReg}
                         onChange={(e) => {
                           titleReg.onChange(e);
@@ -575,28 +794,6 @@ export function IntakeSheet({
                     );
                   })()}
                 </Field>
-              </div>
-
-              {/* 当前程序 | 收案时间 | 争议解决机构 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Field label="当前程序" required error={errors.firstProcedureType?.message}>
-                  <Select
-                    value={firstProcedureType ?? ""}
-                    onValueChange={(v) => handleProcedureChange(v as ProcedureType)}
-                  >
-                    <SelectTrigger className="h-10 bg-background">
-                      <SelectValue placeholder="选择当前程序" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {procedureOptions.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {procedureTypeLabel[p]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-
                 <Field label="收案时间">
                   <div className="relative">
                     <Input
@@ -611,36 +808,9 @@ export function IntakeSheet({
                     <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   </div>
                 </Field>
-
-                <Field label="争议解决机构 / 办理机关">
-                  <Input
-                    placeholder="如：浦东法院 / 上海仲裁委"
-                    {...register("firstAgency")}
-                  />
-                </Field>
               </div>
 
-              {/* 标的额 | 标的描述 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="标的额（元）">
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="font-mono"
-                    {...register("claimAmount", { valueAsNumber: true })}
-                  />
-                </Field>
-                <Field label="标的描述（非金钱标的或其他诉求）">
-                  <Input
-                    placeholder="如：请求确认合同有效 / 请求停止侵害"
-                    {...register("claimDescription")}
-                  />
-                </Field>
-              </div>
-
-              {/* 主办律师 | 协办律师 */}
+              {/* 主办律师 | 协办律师/助理 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="主办律师" required>
                   <Select
@@ -660,63 +830,338 @@ export function IntakeSheet({
                   </Select>
                 </Field>
 
-                <Field label="协办律师（可多选，事后可改）">
-                  <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-background p-3 max-h-44 overflow-y-auto">
-                    {colleagues
-                      .filter((u) => u.id !== ownerUserId)
-                      .map((u) => (
-                        <label
-                          key={u.id}
-                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-popover"
-                        >
-                          <Checkbox
-                            checked={coUserIds.includes(u.id)}
-                            onCheckedChange={() => toggleCo(u.id)}
-                          />
-                          <span>{u.name}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {userRoleLabel[u.role]}
-                          </span>
-                        </label>
-                      ))}
-                  </div>
+                <Field label="协办律师 / 助理（可多选，事后可改）">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 w-full justify-between rounded-sm bg-background font-normal"
+                      >
+                        <span className="truncate">
+                          {coUserIds.length === 0 ? (
+                            <span className="text-muted-foreground">选择协办律师 / 助理</span>
+                          ) : (
+                            colleagues
+                              .filter((u) => coUserIds.includes(u.id))
+                              .map((u) => u.name)
+                              .join("、")
+                          )}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-1.5">
+                      <div className="max-h-56 space-y-0.5 overflow-y-auto">
+                        {colleagues.filter((u) => u.id !== ownerUserId).length === 0 ? (
+                          <p className="py-4 text-center text-xs text-muted-foreground">
+                            暂无可选协办
+                          </p>
+                        ) : (
+                          colleagues
+                            .filter((u) => u.id !== ownerUserId)
+                            .map((u) => (
+                              <label
+                                key={u.id}
+                                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-muted/60"
+                              >
+                                <Checkbox
+                                  checked={coUserIds.includes(u.id)}
+                                  onCheckedChange={() => toggleCo(u.id)}
+                                />
+                                <span>{u.name}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {userRoleLabel[u.role]}
+                                </span>
+                              </label>
+                            ))
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </Field>
               </div>
-
             </Section>
 
-            {/* 2. 案件当事人（委托方 + 对方 + 第三人 合并） */}
+            {/* ② 诉讼/仲裁类：案情信息 */}
+            {kind === "litigation" && (
+              <Section title="② 案情信息" required>
+                {/* 案由 | 当前程序 | 管辖地 | 争议解决机构 */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="案由">
+                    <CauseCombobox
+                      category={category}
+                      value={watch("causeId") || ""}
+                      onChange={(id, name) => {
+                        setValue("causeId", id, { shouldDirty: true });
+                        setCauseName(name);
+                      }}
+                    />
+                  </Field>
+                  <Field label="当前程序" required error={errors.firstProcedureType?.message}>
+                    <Select
+                      value={firstProcedureType ?? ""}
+                      onValueChange={(v) => handleProcedureChange(v as ProcedureType)}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="选择当前程序" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {procedureOptions.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {procedureTypeLabel[p]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="管辖地">
+                    <JurisdictionSelect
+                      value={jurisdiction}
+                      onChange={(v) => {
+                        setValue("jurisdiction", v, { shouldDirty: true });
+                        const cur = watch("firstAgency");
+                        if (cur && !agencyOptions(v).includes(cur)) {
+                          setValue("firstAgency", "", { shouldDirty: true });
+                        }
+                      }}
+                    />
+                  </Field>
+                  <Field label="争议解决机构">
+                    <Select
+                      value={watch("firstAgency") || ""}
+                      onValueChange={(v) => setValue("firstAgency", v, { shouldDirty: true })}
+                      disabled={agencyOpts.length === 0}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder={jurisdiction ? "选择机构" : "请先选管辖地"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agencyOpts.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+
+                {/* 标的额（1/4）| 标的描述（3/4）*/}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="标的额（元）">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="font-mono"
+                      {...register("claimAmount", { valueAsNumber: true })}
+                    />
+                  </Field>
+                  <Field label="标的描述（非金钱标的或其他诉求）" className="sm:col-span-3">
+                    <Input
+                      placeholder="如：请求确认合同有效 / 请求停止侵害"
+                      {...register("claimDescription")}
+                    />
+                  </Field>
+                </div>
+
+                {/* 需向律协备案与否 | 是否反诉 */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="需向律协备案与否">
+                    <Select
+                      value={watch("barFiling") ?? ""}
+                      onValueChange={(v) =>
+                        setValue("barFiling", v as BarFilingType, { shouldDirty: true })
+                      }
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="选择" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BAR_FILING_OPTIONS.map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {barFilingLabel[b]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="是否反诉">
+                    <Select
+                      value={watch("counterclaim") ? "yes" : "no"}
+                      onValueChange={(v) =>
+                        setValue("counterclaim", v === "yes", { shouldDirty: true })
+                      }
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="no">否</SelectItem>
+                        <SelectItem value="yes">是</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              </Section>
+            )}
+
+            {/* ② 非诉/专项：项目信息 */}
+            {kind === "project" && (
+              <Section title="② 项目信息" required>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="业务类型">
+                    <Select
+                      value={watch("businessType") || ""}
+                      onValueChange={(v) => setValue("businessType", v, { shouldDirty: true })}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="选择业务类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROJECT_BUSINESS_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="项目金额（元）">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="font-mono"
+                      {...register("claimAmount", { valueAsNumber: true })}
+                    />
+                  </Field>
+                  <Field label="起始时间">
+                    <Input
+                      type="date"
+                      value={
+                        watch("serviceStart")
+                          ? new Date(watch("serviceStart")!).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setValue(
+                          "serviceStart",
+                          e.target.value ? new Date(e.target.value) : undefined,
+                          { shouldDirty: true }
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="结束时间">
+                    <Input
+                      type="date"
+                      value={
+                        watch("serviceEnd")
+                          ? new Date(watch("serviceEnd")!).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setValue(
+                          "serviceEnd",
+                          e.target.value ? new Date(e.target.value) : undefined,
+                          { shouldDirty: true }
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="服务范围 / 内容" className="sm:col-span-3">
+                    <Input
+                      placeholder="如：尽职调查范围、合同审查清单、交易结构设计…"
+                      {...register("serviceScope")}
+                    />
+                  </Field>
+                  <Field label="交付成果">
+                    <Input placeholder="如：法律意见书 / 尽调报告" {...register("deliverables")} />
+                  </Field>
+                </div>
+              </Section>
+            )}
+
+            {/* ② 顾问：顾问信息 */}
+            {kind === "counsel" && (
+              <Section title="② 顾问信息" required>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Field label="顾问类型">
+                    <Select
+                      value={watch("counselType") || ""}
+                      onValueChange={(v) => setValue("counselType", v, { shouldDirty: true })}
+                    >
+                      <SelectTrigger className="h-10 bg-background">
+                        <SelectValue placeholder="选择顾问类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNSEL_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="顾问期限 · 起">
+                    <Input
+                      type="date"
+                      value={
+                        watch("serviceStart")
+                          ? new Date(watch("serviceStart")!).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setValue(
+                          "serviceStart",
+                          e.target.value ? new Date(e.target.value) : undefined,
+                          { shouldDirty: true }
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="顾问期限 · 止">
+                    <Input
+                      type="date"
+                      value={
+                        watch("serviceEnd")
+                          ? new Date(watch("serviceEnd")!).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setValue(
+                          "serviceEnd",
+                          e.target.value ? new Date(e.target.value) : undefined,
+                          { shouldDirty: true }
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="对接电话">
+                    <Input className="font-mono" placeholder="对接人电话" {...register("contactPhone")} />
+                  </Field>
+                </div>
+                <Field label="服务范围 / 内容">
+                  <Input
+                    placeholder="如：日常法律咨询、合同审查、专项法律意见…"
+                    {...register("serviceScope")}
+                  />
+                </Field>
+              </Section>
+            )}
+
+            {/* ③ 当事人 / 相关方（按类别）*/}
+            {kind === "litigation" && (
             <Section
-              title="② 案件当事人"
+              title="③ 案件当事人"
               required
-              headerAction={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1"
-                  onClick={() =>
-                    appendParty({
-                      role: "OPPOSING_PARTY",
-                      standing: undefined,
-                      ordinal: parties.length + 1,
-                      partyType: "NATURAL_PERSON",
-                      name: "",
-                      idNumber: "",
-                      enterpriseSocialCode: "",
-                      enterpriseName: "",
-                      phone: "",
-                      address: "",
-                      legalRep: "",
-                      contactName: "",
-                      notes: ""
-                    })
-                  }
-                >
-                  <Plus className="h-3 w-3" />
-                  添加当事人
-                </Button>
-              }
+              headerAction={addPartyBtn("添加当事人")}
             >
               {watch("ourStanding") && RECEIVING_STANDINGS.has(watch("ourStanding")!) && (
                 <div className="rounded-md border border-dashed border-primary/40 bg-primary/[0.03] p-3">
@@ -759,163 +1204,26 @@ export function IntakeSheet({
                 </div>
               )}
 
-              <p className="text-[11px] text-muted-foreground">
-                客户必填；相对方 / 第三人用于利益冲突检索，所有当事人均需填写名称与证件号 / 信用代码。
-              </p>
-              <div className="overflow-x-auto">
-                <div className="min-w-[700px] space-y-1.5">
-                  {/* 表头 */}
-                  <div
-                    className={cn(
-                      PARTY_GRID,
-                      "px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-                    )}
-                  >
-                    <span>角色</span>
-                    <span>类型</span>
-                    <span>姓名 / 名称</span>
-                    <span>诉讼地位</span>
-                    <span>证件号 / 信用代码</span>
-                    <span className="text-right">操作</span>
-                  </div>
-
-                  {parties.map((p, idx) => {
-                    const all = (watch("parties") ?? []) as { role?: string }[];
-                    const role = (all[idx]?.role as PartyRole) ?? "OPPOSING_PARTY";
-                    const isClient = role === "CLIENT_PARTY";
-                    const ourStanding = watch("ourStanding");
-                    return (
-                      <PartyCard
-                        key={p.id}
-                        index={idx}
-                        fieldPrefix="parties"
-                        removable={!isClient}
-                        onRemove={() => removeParty(idx)}
-                        errors={errors as never}
-                        roleSlot={
-                          isClient ? (
-                            <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                              客户
-                            </span>
-                          ) : (
-                            <Select
-                              value={role}
-                              onValueChange={(v) =>
-                                setValue(`parties.${idx}.role`, v as PartyRole, {
-                                  shouldDirty: true
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="OPPOSING_PARTY" className="text-xs">
-                                  相对方
-                                </SelectItem>
-                                <SelectItem value="THIRD_PARTY" className="text-xs">
-                                  第三人
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )
-                        }
-                        standingSlot={
-                          isClient ? (
-                            <Select
-                              value={ourStanding ?? ""}
-                              onValueChange={(v) =>
-                                setValue("ourStanding", v as LitigationStanding, {
-                                  shouldDirty: true
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
-                                <SelectValue placeholder="诉讼地位（可选）" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(ourStandingOptions.length
-                                  ? ourStandingOptions
-                                  : (Object.keys(litigationStandingLabel) as LitigationStanding[])
-                                ).map((s) => (
-                                  <SelectItem key={s} value={s} className="text-xs">
-                                    {litigationStandingLabel[s]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Select
-                              value={watch(`parties.${idx}.standing`) ?? ""}
-                              onValueChange={(v) =>
-                                setValue(`parties.${idx}.standing`, v as LitigationStanding, {
-                                  shouldDirty: true
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full bg-background px-2 text-xs">
-                                <SelectValue placeholder="诉讼地位" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(Object.keys(litigationStandingLabel) as LitigationStanding[]).map(
-                                  (s) => (
-                                    <SelectItem key={s} value={s} className="text-xs">
-                                      {litigationStandingLabel[s]}
-                                    </SelectItem>
-                                  )
-                                )}
-                              </SelectContent>
-                            </Select>
-                          )
-                        }
-                        nameSlot={
-                          isClient ? (
-                            <ClientCombobox
-                              triggerClassName="h-8 text-sm"
-                              clientId={clientId}
-                              clientName={watch("parties.0.name") ?? ""}
-                              clientType={
-                                watch("parties.0.partyType") === "ORGANIZATION"
-                                  ? "COMPANY"
-                                  : "INDIVIDUAL"
-                              }
-                              options={clientOptions}
-                              onPickExisting={(id, name) => {
-                                setValue("clientId", id, { shouldDirty: true });
-                                setValue("parties.0.name", name, {
-                                  shouldDirty: true,
-                                  shouldValidate: true
-                                });
-                              }}
-                              onTypeNew={(name) => {
-                                setValue("clientId", "", { shouldDirty: true });
-                                setValue("parties.0.name", name, {
-                                  shouldDirty: true,
-                                  shouldValidate: true
-                                });
-                              }}
-                              onPickYuandian={handlePickYuandian}
-                              onClear={() => {
-                                setValue("clientId", "", { shouldDirty: true });
-                                setValue("parties.0.name", "", { shouldDirty: true });
-                                setValue("parties.0.idNumber", "", { shouldDirty: true });
-                                setValue("parties.0.enterpriseSocialCode", "", { shouldDirty: true });
-                                setValue("parties.0.enterpriseName", "", { shouldDirty: true });
-                                setValue("parties.0.address", "", { shouldDirty: true });
-                                setValue("parties.0.legalRep", "", { shouldDirty: true });
-                              }}
-                            />
-                          ) : undefined
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+              {renderParties("litigation")}
             </Section>
+            )}
+
+            {/* ③ 非诉/专项：委托方与相对方（无诉讼地位）*/}
+            {kind === "project" && (
+              <Section title="③ 委托方与相对方" headerAction={addPartyBtn("添加相对方")}>
+                {renderParties("project")}
+              </Section>
+            )}
+
+            {/* ③ 顾问：顾问单位 */}
+            {kind === "counsel" && (
+              <Section title="③ 顾问单位" required>
+                {renderParties("counsel")}
+              </Section>
+            )}
 
             {/* 3. 律师费 */}
-            <Section title="③ 律师费">
+            <Section title={kind === "counsel" ? "④ 顾问费" : "④ 律师费"}>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {FEE_TYPES.map((t) => (
                   <button
@@ -1013,7 +1321,7 @@ export function IntakeSheet({
 
             {/* 4. 合同 */}
             <Section
-              title="④ 委托合同 / 相关附件"
+              title="⑤ 委托合同 / 相关附件"
               headerAction={
                 <>
                   <input

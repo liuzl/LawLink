@@ -54,9 +54,22 @@ export const intakeCreateSchema = z.object({
   // 程序 + 诉讼地位 + 机构 + 标的
   firstProcedureType: procedureTypeSchema.optional(),
   firstAgency: z.string().max(120).optional().or(z.literal("")),
+  jurisdiction: z.string().max(120).optional().or(z.literal("")),
   ourStanding: litigationStandingSchema.optional(),
   claimAmount: z.coerce.number().nonnegative().optional(),
   claimDescription: z.string().max(500).optional().or(z.literal("")),
+
+  // v0.30: 律协备案 + 是否反诉
+  barFiling: z.enum(["NONE", "COLLECTIVE", "SENSITIVE", "MAJOR", "OTHER"]).optional(),
+  counterclaim: z.boolean().default(false),
+
+  // v0.31: 非诉 / 顾问 / 专项 专属
+  businessType: z.string().max(60).optional().or(z.literal("")),
+  serviceScope: z.string().max(1000).optional().or(z.literal("")),
+  deliverables: z.string().max(500).optional().or(z.literal("")),
+  counselType: z.string().max(40).optional().or(z.literal("")),
+  serviceStart: z.coerce.date().optional(),
+  serviceEnd: z.coerce.date().optional(),
 
   // 委托方 + 联系人
   clientId: z.string().cuid().optional().or(z.literal("")),

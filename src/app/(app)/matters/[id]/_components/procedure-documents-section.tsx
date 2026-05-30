@@ -110,7 +110,8 @@ export function ProcedureDocumentsSection({
         fd.set("procedureId", procedureId);
         fd.set("file", picked);
         fd.set("category", category);
-        if (customName.trim()) fd.set("name", customName.trim());
+        // 文件本身带名称：未自定义时默认用文件名（修复"名称必填却无处填"）
+        fd.set("name", customName.trim() || picked.name);
         await uploadDocument(fd);
         toast.success("上传成功");
         setOpen(false);

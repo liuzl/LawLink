@@ -100,6 +100,84 @@ export async function listMatters(input: Partial<MatterListQuery> = {}) {
   return { items, total, page: query.page, pageSize: query.pageSize };
 }
 
+// v0.32: 关联案件 —— 搜索 / 关联 / 解除
+export async function searchMattersForLink(matterId: string, q: string) {
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
+  const query = q.trim();
+  // 已关联的（两个方向）排除
+  const links = await prisma.matterLink.findMany({
+    where: { OR: [{ matterId }, { relatedMatterId: matterId }] },
+    select: { matterId: true, relatedMatterId: true }
+  });
+  const excludeIds = new Set<string>([matterId]);
+  links.forEach((l) => {
+    excludeIds.add(l.matterId);
+    excludeIds.add(l.relatedMatterId);
+  });
+  const items = await prisma.matter.findMany({
+    where: {
+      deletedAt: null,
+      id: { notIn: Array.from(excludeIds) },
+      ...matterVisibilityFilter(session.user.id, session.user.role),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { internalCode: { contains: query, mode: "insensitive" } }
+            ]
+          }
+        : {})
+    },
+    select: { id: true, internalCode: true, title: true },
+    orderBy: { createdAt: "desc" },
+    take: 8
+  });
+  return items;
+}
+
+export async function addMatterLink(matterId: string, relatedMatterId: string) {
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
+  await assertCanAccessMatter(session.user.id, session.user.role, relatedMatterId);
+  if (matterId === relatedMatterId) throw new Error("不能关联到自身");
+  await prisma.matterLink.upsert({
+    where: { matterId_relatedMatterId: { matterId, relatedMatterId } },
+    create: { matterId, relatedMatterId },
+    update: {}
+  });
+  await audit({
+    userId: session.user.id,
+    action: "MATTER_LINK_ADD",
+    targetType: "Matter",
+    targetId: matterId,
+    detail: { relatedMatterId }
+  });
+  revalidatePath(`/matters/${matterId}`);
+}
+
+export async function removeMatterLink(matterId: string, relatedMatterId: string) {
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
+  // 两个方向都删（无论当初谁关联谁）
+  await prisma.matterLink.deleteMany({
+    where: {
+      OR: [
+        { matterId, relatedMatterId },
+        { matterId: relatedMatterId, relatedMatterId: matterId }
+      ]
+    }
+  });
+  await audit({
+    userId: session.user.id,
+    action: "MATTER_LINK_REMOVE",
+    targetType: "Matter",
+    targetId: matterId,
+    detail: { relatedMatterId }
+  });
+  revalidatePath(`/matters/${matterId}`);
+}
+
 export async function getMatterById(id: string) {
   const session = await requireSession();
   await assertCanAccessMatter(session.user.id, session.user.role, id);
@@ -115,6 +193,13 @@ export async function getMatterById(id: string) {
       cause: true,
       parties: { orderBy: [{ role: "asc" }, { ordinal: "asc" }] },
       relatedEntities: { orderBy: { createdAt: "asc" } },
+      intake: { select: { counterclaim: true } },
+      linksFrom: {
+        include: { relatedMatter: { select: { id: true, internalCode: true, title: true } } }
+      },
+      linksTo: {
+        include: { matter: { select: { id: true, internalCode: true, title: true } } }
+      },
       procedures: {
         orderBy: { order: "asc" },
         include: {

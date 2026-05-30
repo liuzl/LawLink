@@ -106,6 +106,25 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
     return allNodes.some((x) => x.parentId === n.id);
   }
 
+  // 选用一个案由：任意层级都可直接选中。
+  // 有子级 → 选中并展开下一列（可继续下钻，也可就此停下）；叶子 → 选中并关闭。
+  function selectNode(node: Node, level: number) {
+    onChange(node.id, node.name);
+    setSelectedName(node.name);
+    setSelectedL2(node.l2Name);
+    if (hasChildren(node)) {
+      if (level === 2) {
+        setPickedL2(node.id);
+        setPickedL3(null);
+      } else if (level === 3) {
+        setPickedL3(node.id);
+      }
+    } else {
+      setOpen(false);
+    }
+  }
+
+  // 搜索结果直接选中并关闭
   function pickNode(node: Node) {
     onChange(node.id, node.name);
     setSelectedName(node.name);
@@ -120,17 +139,10 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-10 w-full justify-between font-normal"
+          className="h-10 w-full justify-between rounded-sm font-normal"
         >
           {value && selectedName ? (
-            <span className="flex min-w-0 items-baseline gap-1.5">
-              {selectedL2 && (
-                <span className="shrink-0 text-[11px] text-muted-foreground">
-                  {selectedL2} /
-                </span>
-              )}
-              <span className="truncate">{selectedName}</span>
-            </span>
+            <span className="truncate">{selectedName}</span>
           ) : (
             <span className="text-muted-foreground">点击展开案由分级选择</span>
           )}
@@ -188,21 +200,14 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
           </div>
         ) : (
           // 级联模式：渐进展开（选了上一级才出现下一列）
-          // 单击：有子级 → 展开下一列；叶子 → 直接选中
+          // 单击任意层级即选中；有子级则同时展开下一列，可继续下钻或就此停下
           <div className="flex divide-x divide-border">
             <Column
               title="二级"
               items={l2Nodes}
               activeId={pickedL2}
               hasChildren={hasChildren}
-              onPick={(n) => {
-                if (hasChildren(n)) {
-                  setPickedL2(n.id);
-                  setPickedL3(null);
-                } else {
-                  pickNode(n);
-                }
-              }}
+              onPick={(n) => selectNode(n, 2)}
             />
             {pickedL2 && (
               <Column
@@ -211,13 +216,7 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
                 activeId={pickedL3}
                 empty="该二级下无三级"
                 hasChildren={hasChildren}
-                onPick={(n) => {
-                  if (hasChildren(n)) {
-                    setPickedL3(n.id);
-                  } else {
-                    pickNode(n);
-                  }
-                }}
+                onPick={(n) => selectNode(n, 3)}
               />
             )}
             {pickedL3 && l4Nodes.length > 0 && (
@@ -226,7 +225,7 @@ export function CauseCombobox({ value, onChange, category, disabled }: Props) {
                 items={l4Nodes}
                 activeId={null}
                 hasChildren={() => false}
-                onPick={pickNode}
+                onPick={(n) => selectNode(n, 4)}
               />
             )}
           </div>

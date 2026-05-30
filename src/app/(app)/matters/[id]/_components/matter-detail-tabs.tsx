@@ -10,7 +10,6 @@ import {
   Clock,
   Plus,
   Scale,
-  Building2,
   MessageSquare,
   Sparkles,
 } from "lucide-react";
@@ -31,7 +30,6 @@ import { FoldersPanel } from "./folders-panel";
 import { LifecycleActions } from "./lifecycle-actions";
 import { MatterPreservationPanel } from "./matter-preservation-panel";
 import { CaseSearchPanel } from "./case-search-panel";
-import { OpposingCompaniesPanel } from "./opposing-companies-panel";
 import { ApprovalsPanel } from "./approvals-panel";
 import { ExpressMiniCard, type SealContractItem, type ExpressItem } from "./info-extras";
 import { ArchiveStatusBanner } from "./archive-status-banner";
@@ -48,6 +46,13 @@ type MatterPayload = Prisma.MatterGetPayload<{
     cause: true;
     parties: true;
     relatedEntities: true;
+    intake: { select: { counterclaim: true } };
+    linksFrom: {
+      include: { relatedMatter: { select: { id: true; internalCode: true; title: true } } };
+    };
+    linksTo: {
+      include: { matter: { select: { id: true; internalCode: true; title: true } } };
+    };
     procedures: {
       include: {
         deadlines: true;
@@ -100,6 +105,7 @@ export type FinancePayload = {
     refund: number;
     cost: number;
     commission: number;
+    invoiced: number;
   };
 };
 
@@ -314,19 +320,6 @@ export function MatterDetailTabs({
             </TabButton>
           )}
 
-          <TabButton active={tab === "companies"} onClick={() => setTab("companies")}>
-            <Building2 className="h-3.5 w-3.5" strokeWidth={1.8} />
-            对方公司
-            {(() => {
-              const n = matter.parties.filter((p) => p.role === "OPPOSING_PARTY").length;
-              return n > 0 ? (
-                <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
-                  {n}
-                </span>
-              ) : null;
-            })()}
-          </TabButton>
-
           <div className="flex-1" />
 
           <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
@@ -412,20 +405,6 @@ export function MatterDetailTabs({
               matterId={matter.id}
               matterCategory={matter.category}
               defaultCauseName={matter.cause?.name ?? null}
-            />
-          )}
-          {tab === "companies" && (
-            <OpposingCompaniesPanel
-              parties={matter.parties
-                .filter((p) => p.role === "OPPOSING_PARTY")
-                .map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  enterpriseId: p.enterpriseId,
-                  enterpriseSocialCode: p.enterpriseSocialCode,
-                  enterpriseName: p.enterpriseName,
-                  enterpriseBoundAt: p.enterpriseBoundAt
-                }))}
             />
           )}
           {tab === "notes" && <NotesPanel matterId={matter.id} notes={notes} />}

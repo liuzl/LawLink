@@ -16,7 +16,9 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useFormContext, type FieldErrors } from "react-hook-form";
 import { ChevronDown, Loader2, Search, Sparkles, Trash2 } from "lucide-react";
+import type { PartyType } from "@prisma/client";
 import { toast } from "sonner";
+import { partyTypeLabel, PARTY_TYPE_OPTIONS } from "@/lib/enums";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,9 +36,12 @@ import {
   type EnterpriseSearchItem
 } from "@/server/yuandian/enterprise";
 
-/** 表头与每一行共用，保证列对齐 */
+/** 表头与每一行共用，保证列对齐。诉讼/仲裁类含「诉讼地位」列 */
 export const PARTY_GRID =
-  "grid grid-cols-[72px_84px_minmax(0,1.2fr)_108px_minmax(0,1.5fr)_52px] items-center gap-1.5";
+  "grid grid-cols-[68px_92px_minmax(0,1.3fr)_minmax(0,1.35fr)_84px_112px_104px_44px] items-center gap-1.5";
+/** 非诉/顾问/专项：无「诉讼地位」列 */
+export const PARTY_GRID_NO_STANDING =
+  "grid grid-cols-[68px_92px_minmax(0,1.3fr)_minmax(0,1.35fr)_84px_112px_44px] items-center gap-1.5";
 
 type Props = {
   index: number;
@@ -45,8 +50,10 @@ type Props = {
   errors?: FieldErrors<Record<string, unknown>>;
   /** 角色单元格内容（委托方徽标 / 对方·第三人下拉） */
   roleSlot: ReactNode;
-  /** 诉讼地位单元格内容 */
-  standingSlot: ReactNode;
+  /** 诉讼地位单元格内容（showStanding 为 false 时忽略） */
+  standingSlot?: ReactNode;
+  /** 是否显示「诉讼地位」列。诉讼/仲裁类 true，非诉/顾问/专项 false。默认 true */
+  showStanding?: boolean;
   /** false 时隐藏删除按钮（如委托方行恒存在）。默认 true */
   removable?: boolean;
   /** 提供时替换内置"姓名/名称"输入框（如委托方行注入客户选择器）。 */
@@ -60,12 +67,14 @@ export function PartyCard({
   errors,
   roleSlot,
   standingSlot,
+  showStanding = true,
   removable = true,
   nameSlot
 }: Props) {
   const { register, watch, setValue } = useFormContext();
   const p = `${fieldPrefix}.${index}`;
-  const partyType = (watch(`${p}.partyType`) as "NATURAL_PERSON" | "ORGANIZATION") ?? "NATURAL_PERSON";
+  const partyType = (watch(`${p}.partyType`) as PartyType) ?? "NATURAL_PERSON";
+  const isOrg = partyType !== "NATURAL_PERSON";
 
   const [candidates, setCandidates] = useState<EnterpriseSearchItem[] | null>(null);
   const [searching, startSearch] = useTransition();
@@ -74,14 +83,12 @@ export function PartyCard({
 
   // 次要字段是否已有内容（折叠态给个小提示）
   const secondaryFilled = [
-    watch(`${p}.phone`),
     watch(`${p}.address`),
-    watch(`${p}.contactName`),
     watch(`${p}.notes`),
-    partyType === "ORGANIZATION" ? watch(`${p}.legalRep`) : undefined
+    isOrg ? watch(`${p}.legalRep`) : undefined
   ].filter((v) => typeof v === "string" && v.trim() !== "").length;
 
-  function changeType(next: "NATURAL_PERSON" | "ORGANIZATION") {
+  function changeType(next: PartyType) {
     setValue(`${p}.partyType`, next, { shouldDirty: true, shouldValidate: true });
     // 切换类型时清空对侧的必填字段，避免提示串台
     if (next === "NATURAL_PERSON") {
@@ -149,24 +156,25 @@ export function PartyCard({
   const fieldErr = (errors as any)?.[fieldPrefix]?.[index] ?? {};
   const idErr = partyType === "NATURAL_PERSON" ? fieldErr.idNumber : fieldErr.enterpriseSocialCode;
 
+  const grid = showStanding ? PARTY_GRID : PARTY_GRID_NO_STANDING;
+
   return (
     <div className="rounded-md border border-border bg-background">
-      <div className={cn(PARTY_GRID, "px-2 py-1.5")}>
+      <div className={cn(grid, "px-2 py-1.5")}>
         {/* 角色 */}
         <div className="min-w-0">{roleSlot}</div>
 
-        {/* 类型 */}
-        <Select value={partyType} onValueChange={(v) => changeType(v as typeof partyType)}>
+        {/* 主体类型 */}
+        <Select value={partyType} onValueChange={(v) => changeType(v as PartyType)}>
           <SelectTrigger className="h-8 bg-background px-2 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="NATURAL_PERSON" className="text-xs">
-              自然人
-            </SelectItem>
-            <SelectItem value="ORGANIZATION" className="text-xs">
-              单位
-            </SelectItem>
+            {PARTY_TYPE_OPTIONS.map((t) => (
+              <SelectItem key={t} value={t} className="text-xs">
+                {partyTypeLabel[t]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -175,18 +183,15 @@ export function PartyCard({
           {nameSlot ?? (
             <Input
               className="h-8 text-sm"
-              placeholder={partyType === "ORGANIZATION" ? "公司 / 组织名称" : "姓名"}
+              placeholder={isOrg ? "单位 / 组织名称" : "姓名"}
               {...register(`${p}.name`)}
             />
           )}
         </div>
 
-        {/* 诉讼地位 */}
-        <div className="min-w-0">{standingSlot}</div>
-
         {/* 证件号 / 信用代码 */}
         <div className="flex min-w-0 items-center gap-1">
-          {partyType === "NATURAL_PERSON" ? (
+          {!isOrg ? (
             <Input
               placeholder="身份证号（必填）"
               className={cn("h-8 font-mono text-xs", idErr && "border-destructive")}
@@ -247,12 +252,29 @@ export function PartyCard({
           )}
         </div>
 
+        {/* 联系人 */}
+        <Input
+          className="h-8 text-sm"
+          placeholder="联系人"
+          {...register(`${p}.contactName`)}
+        />
+
+        {/* 联系电话 */}
+        <Input
+          className="h-8 font-mono text-xs"
+          placeholder="联系电话"
+          {...register(`${p}.phone`)}
+        />
+
+        {/* 诉讼地位（仅诉讼/仲裁类）*/}
+        {showStanding && <div className="min-w-0">{standingSlot}</div>}
+
         {/* 操作：更多 + 删除 */}
         <div className="flex items-center justify-end gap-0.5">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            title={expanded ? "收起" : "更多（电话 / 地址 / 联系人 / 备注）"}
+            title={expanded ? "收起" : "更多（法定代表人 / 地址 / 备注）"}
             className={cn(
               "flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
               !expanded && secondaryFilled > 0 && "text-primary"
@@ -282,23 +304,17 @@ export function PartyCard({
       {/* 次要字段（展开） */}
       {expanded && (
         <div className="grid grid-cols-1 gap-2 border-t border-border px-2 py-2 sm:grid-cols-2">
-          {partyType === "ORGANIZATION" && (
+          {isOrg && (
             <Input
               className="h-8 text-sm"
               placeholder="法定代表人 / 负责人（可选）"
               {...register(`${p}.legalRep`)}
             />
           )}
-          <Input className="h-8 text-sm" placeholder="联系电话（可选）" {...register(`${p}.phone`)} />
-          <Input
-            className="h-8 text-sm"
-            placeholder={partyType === "ORGANIZATION" ? "经办联系人（可选）" : "代理 / 协助联系人（可选）"}
-            {...register(`${p}.contactName`)}
-          />
           <div className="sm:col-span-2">
             <Input
               className="h-8 text-sm"
-              placeholder={partyType === "ORGANIZATION" ? "注册地址（可选）" : "住址（可选）"}
+              placeholder={isOrg ? "注册地址（可选）" : "住址（可选）"}
               {...register(`${p}.address`)}
             />
           </div>

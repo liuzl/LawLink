@@ -238,9 +238,19 @@ export async function createIntake(input: IntakeCreateInput) {
 
       firstProcedureType: data.firstProcedureType ?? null,
       firstAgency: data.firstAgency?.trim() || null,
+      jurisdiction: data.jurisdiction?.trim() || null,
       ourStanding: data.ourStanding ?? null,
       claimAmount: data.claimAmount ?? null,
       claimDescription: data.claimDescription?.trim() || null,
+      barFiling: data.barFiling ?? null,
+      counterclaim: data.counterclaim ?? false,
+
+      businessType: data.businessType?.trim() || null,
+      serviceScope: data.serviceScope?.trim() || null,
+      deliverables: data.deliverables?.trim() || null,
+      counselType: data.counselType?.trim() || null,
+      serviceStart: data.serviceStart ?? null,
+      serviceEnd: data.serviceEnd ?? null,
 
       feeType: data.feeType ?? null,
       feeAmount: data.feeAmount ?? null,

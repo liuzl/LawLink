@@ -10,7 +10,9 @@ import type {
   ProcedureType,
   LitigationStanding,
   FeeType,
-  InvoiceRequestStatus
+  InvoiceRequestStatus,
+  PartyType,
+  BarFilingType
 } from "@prisma/client";
 
 export const clientTypeLabel: Record<ClientType, string> = {
@@ -18,6 +20,76 @@ export const clientTypeLabel: Record<ClientType, string> = {
   COMPANY: "公司",
   ORGANIZATION: "其他组织"
 };
+
+// v0.30: 当事人主体类型。自然人填身份证号，其余主体填统一社会信用代码。
+export const partyTypeLabel: Record<PartyType, string> = {
+  NATURAL_PERSON: "自然人",
+  COMPANY: "公司",
+  PARTNERSHIP: "合伙企业",
+  INDIVIDUAL_BUSINESS: "个体工商户",
+  INSTITUTION: "事业单位",
+  SOCIAL_ORG: "社会组织",
+  GOVERNMENT: "政府机关",
+  OTHER_ORG: "其他组织",
+  ORGANIZATION: "其他组织" // 旧数据兼容
+};
+
+// 录入下拉的主体类型顺序（不含旧的 ORGANIZATION）
+export const PARTY_TYPE_OPTIONS: PartyType[] = [
+  "NATURAL_PERSON",
+  "COMPANY",
+  "PARTNERSHIP",
+  "INDIVIDUAL_BUSINESS",
+  "INSTITUTION",
+  "SOCIAL_ORG",
+  "GOVERNMENT",
+  "OTHER_ORG"
+];
+
+// v0.30: 需向律协备案与否
+export const barFilingLabel: Record<BarFilingType, string> = {
+  NONE: "否",
+  COLLECTIVE: "需要，涉集体案件",
+  SENSITIVE: "需要，涉敏感案件",
+  MAJOR: "需要，涉重大案件",
+  OTHER: "需要，其他特殊案件"
+};
+
+export const BAR_FILING_OPTIONS: BarFilingType[] = [
+  "NONE",
+  "COLLECTIVE",
+  "SENSITIVE",
+  "MAJOR",
+  "OTHER"
+];
+
+// v0.31: 案件类别按业务性质分三类——决定收案表单结构
+// litigation 诉讼/仲裁（民商事/刑事/行政）；project 非诉/专项；counsel 顾问
+export type CategoryKind = "litigation" | "project" | "counsel";
+
+export function matterCategoryKind(c: MatterCategory): CategoryKind {
+  if (c === "LEGAL_COUNSEL") return "counsel";
+  if (c === "NON_LITIGATION" || c === "SPECIAL_PROJECT") return "project";
+  return "litigation";
+}
+
+// 非诉 / 专项 业务类型（可微调）
+export const PROJECT_BUSINESS_TYPES: string[] = [
+  "尽职调查",
+  "合同审查 / 起草",
+  "投融资",
+  "并购重组",
+  "改制上市",
+  "破产清算",
+  "知识产权",
+  "合规体系",
+  "招投标",
+  "行政许可 / 审批",
+  "其他"
+];
+
+// 顾问类型
+export const COUNSEL_TYPES: string[] = ["常年法律顾问", "专项法律顾问"];
 
 export const matterCategoryLabel: Record<MatterCategory, string> = {
   CIVIL_COMMERCIAL: "民商事",

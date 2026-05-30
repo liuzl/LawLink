@@ -182,10 +182,27 @@ enum PartyRole {
   OTHER
 }
 
-// v0.27: 当事人主体类型（自然人 vs 公司/组织），决定必填校验分支
+// v0.27: 当事人主体类型（自然人需身份证号；其余主体需统一社会信用代码）
+// v0.30: 细分主体类型（公司/合伙企业/个体工商户/事业单位/社会组织/政府机关/其他组织）
 enum PartyType {
   NATURAL_PERSON
-  ORGANIZATION
+  ORGANIZATION // 旧数据兼容（= 其他组织）
+  COMPANY
+  PARTNERSHIP
+  INDIVIDUAL_BUSINESS
+  INSTITUTION
+  SOCIAL_ORG
+  GOVERNMENT
+  OTHER_ORG
+}
+
+// v0.30: 需向律协备案与否
+enum BarFilingType {
+  NONE // 否
+  COLLECTIVE // 涉集体案件
+  SENSITIVE // 涉敏感案件
+  MAJOR // 涉重大案件
+  OTHER // 其他特殊案件
 }
 
 enum ClientType {
@@ -440,10 +457,23 @@ model Intake {
 
   // v0.5: 程序 + 诉讼地位 + 争议解决机构 + 标的
   firstProcedureType ProcedureType?
-  firstAgency        String? // 法院/仲裁机构/侦查机关 名称
+  firstAgency        String? // 争议解决机构：法院/仲裁机构/侦查机关 名称
+  jurisdiction       String? // v0.30 管辖地：省/市/区县 路径
   ourStanding        LitigationStanding?
   claimAmount        Decimal?            @db.Decimal(14, 2)
   claimDescription   String? // 非金钱标的描述
+
+  // v0.30: 律协备案 + 是否反诉（诉讼/仲裁类）
+  barFiling    BarFilingType?
+  counterclaim Boolean        @default(false)
+
+  // v0.31: 非诉 / 顾问 / 专项（非诉讼类）专属字段
+  businessType String? // 业务类型（非诉/专项）
+  serviceScope String? // 服务范围 / 内容（非诉/专项/顾问）
+  deliverables String? // 交付成果（非诉/专项）
+  counselType  String? // 顾问类型：常年 / 专项（顾问）
+  serviceStart DateTime? // 起始 / 顾问期限起
+  serviceEnd   DateTime? // 结束 / 顾问期限止
 
   // v0.5: 律师费
   feeType          FeeType?
@@ -512,6 +542,8 @@ model Matter {
   procedures       MatterProcedure[]
   parties          Party[]
   relatedEntities  RelatedEntity[]
+  linksFrom        MatterLink[]    @relation("MatterLinkFrom") // v0.32 关联案件（本案 → 关联案）
+  linksTo          MatterLink[]    @relation("MatterLinkTo") // 反向（关联案 → 本案）
   notes            Note[]
   tasks            Task[]
   documents        Document[]
@@ -615,12 +647,20 @@ model MatterProcedure {
   order       Int
 
   caseNumber     String?
-  handlingAgency String?
+  handlingAgency String? // 管辖机构（法院/仲裁委/执行法院…）
   panel          String?
   handler        String?
 
-  acceptedAt  DateTime?
-  concludedAt DateTime?
+  // v0.32: 程序级补充信息
+  jurisdiction          String? // 管辖地（省/市/区县）
+  presidingJudge        String? // 主审法官 / 首席仲裁员 / 执行法官
+  presidingJudgeContact String? // 主审法官联系方式
+  judgeAssistant        String? // 法官助理 / 仲裁庭助理
+  judgeAssistantContact String? // 助理联系方式
+  ourStanding           LitigationStanding? // 我方地位（按程序确定可选项）
+
+  acceptedAt  DateTime? // 立案时间
+  concludedAt DateTime? // 裁决 / 结案时间
 
   status      ProcedureStatus   @default(PENDING)
   outcome     ProcedureOutcome?
@@ -763,6 +803,20 @@ model RelatedEntity {
   updatedAt    DateTime @updatedAt
 
   @@index([name])
+}
+
+// v0.32: 关联案件（案件 ↔ 案件，方向性记录，展示时双向合并）
+model MatterLink {
+  id              String   @id @default(cuid())
+  matterId        String
+  matter          Matter   @relation("MatterLinkFrom", fields: [matterId], references: [id], onDelete: Cascade)
+  relatedMatterId String
+  relatedMatter   Matter   @relation("MatterLinkTo", fields: [relatedMatterId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([matterId, relatedMatterId])
+  @@index([matterId])
+  @@index([relatedMatterId])
 }
 
 // ============================================================

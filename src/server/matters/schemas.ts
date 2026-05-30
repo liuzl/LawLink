@@ -77,8 +77,18 @@ export const partyRoleSchema = z.enum([
   "OTHER"
 ]);
 
-// v0.27: 当事人主体类型
-export const partyTypeSchema = z.enum(["NATURAL_PERSON", "ORGANIZATION"]);
+// v0.27 / v0.30: 当事人主体类型（自然人填身份证号，其余主体填统一社会信用代码）
+export const partyTypeSchema = z.enum([
+  "NATURAL_PERSON",
+  "ORGANIZATION", // 旧数据兼容
+  "COMPANY",
+  "PARTNERSHIP",
+  "INDIVIDUAL_BUSINESS",
+  "INSTITUTION",
+  "SOCIAL_ORG",
+  "GOVERNMENT",
+  "OTHER_ORG"
+]);
 
 export const partyInputSchema = z
   .object({
