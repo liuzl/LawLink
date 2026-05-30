@@ -183,7 +183,7 @@ export const procedureTypeLabel: Record<ProcedureType, string> = {
   REMAND_FIRST: "重审一审",
   REMAND_SECOND: "重审二审",
   PROSECUTORIAL_SUPERVISION: "检察监督",
-  COMMERCIAL_ARBITRATION: "民商事仲裁",
+  COMMERCIAL_ARBITRATION: "商事仲裁",
   LABOR_ARBITRATION: "劳动仲裁",
   ARBITRATION_SET_ASIDE: "撤销仲裁裁决",
   ARBITRATION_ENFORCEMENT_REVIEW: "不予执行仲裁审查",
