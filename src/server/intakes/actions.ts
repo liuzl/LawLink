@@ -432,6 +432,9 @@ export async function convertIntakeToMatter(intakeId: string) {
         intakeDate: intake.receivedAt,
         ourStanding: intake.ourStanding,
         claimAmount: intake.claimAmount,
+        // 是否反诉：按我方地位推断角色（被告提反诉→反诉原告；原告被反诉→反诉被告）
+        counterclaimAsPlaintiff: !!intake.counterclaim && intake.ourStanding === "DEFENDANT",
+        counterclaimAsDefendant: !!intake.counterclaim && intake.ourStanding === "PLAINTIFF",
         // 主办自动作为 LEAD；coUserIds 作为 CO_LEAD
         members: {
           create: [
@@ -467,7 +470,10 @@ export async function convertIntakeToMatter(intakeId: string) {
             engagement: "ENGAGED",
             order: 1,
             status: "IN_PROGRESS",
-            handlingAgency: intake.firstAgency
+            handlingAgency: intake.firstAgency,
+            // 程序级信息从收案带入首程序（原先丢失）
+            jurisdiction: intake.jurisdiction,
+            ourStanding: intake.ourStanding
           }
         }
       }

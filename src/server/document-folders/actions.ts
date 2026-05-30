@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
 import { assertMatterWritable } from "@/lib/archive/guard";
+import { assertCanAccessMatter } from "@/lib/permissions";
 import {
   folderCreateSchema,
   folderRenameSchema,
@@ -27,7 +28,8 @@ async function requireFolderEditor(matterId: string, session: { user: { id: stri
 }
 
 export async function listFoldersByMatter(matterId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
   return prisma.documentFolder.findMany({
     where: { matterId },
     orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],

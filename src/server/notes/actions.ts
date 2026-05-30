@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
 import { assertMatterWritable } from "@/lib/archive/guard";
+import { assertCanAccessMatter } from "@/lib/permissions";
 
 const noteChannelSchema = z.enum(["PHONE", "WECHAT", "EMAIL", "MEETING", "COURT", "OTHER"]);
 
@@ -28,6 +29,7 @@ export type NoteUpdateInput = z.infer<typeof noteUpdateSchema>;
 export async function createNote(input: NoteCreateInput) {
   const session = await requireSession();
   const data = noteCreateSchema.parse(input);
+  await assertCanAccessMatter(session.user.id, session.user.role, data.matterId);
   await assertMatterWritable(data.matterId);
 
   const created = await prisma.note.create({
@@ -113,7 +115,8 @@ export async function deleteNote(id: string) {
 }
 
 export async function listNotes(matterId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
   return prisma.note.findMany({
     where: { matterId, deletedAt: null },
     orderBy: { occurredAt: "desc" },

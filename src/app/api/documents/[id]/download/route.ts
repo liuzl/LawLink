@@ -22,7 +22,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   });
   if (!doc) return NextResponse.json({ error: "材料不存在" }, { status: 404 });
 
-  // 权限检查：ADMIN / PRINCIPAL_LAWYER 可读全部；其他角色 —— 案件成员才能读案件材料；收案合同只要登录就可读
+  // 权限检查：ADMIN / PRINCIPAL_LAWYER 可读全部；其他角色 —— 案件成员才能读案件材料；
+  // 仅 intakeId 的收案合同限收案创建人/主办/协办（含客户身份证号等隐私，不再对全所开放）
   if (session.user.role !== "ADMIN" && session.user.role !== "PRINCIPAL_LAWYER") {
     if (doc.matterId) {
       const member = await prisma.matterMember.findUnique({
@@ -31,8 +32,21 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       if (!member) {
         return NextResponse.json({ error: "无权访问" }, { status: 403 });
       }
+    } else if (doc.intakeId) {
+      const intake = await prisma.intake.findUnique({
+        where: { id: doc.intakeId },
+        select: { createdById: true, ownerUserId: true, coUserIds: true }
+      });
+      const uid = session.user.id;
+      const allowed =
+        !!intake &&
+        (intake.createdById === uid ||
+          intake.ownerUserId === uid ||
+          intake.coUserIds.includes(uid));
+      if (!allowed) {
+        return NextResponse.json({ error: "无权访问" }, { status: 403 });
+      }
     }
-    // 仅 intakeId 的合同：任何登录用户可读（收案阶段还没有案件成员概念）
   }
 
   let buf: Buffer;

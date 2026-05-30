@@ -153,7 +153,7 @@ export default async function IntakeDetailPage({ params }: { params: { id: strin
             {intake.cause?.name ?? intake.causeFreeText ?? "—"}
           </InfoItem>
           <InfoItem label="主办律师">{intake.ownerUser?.name ?? "—"}</InfoItem>
-          <InfoItem label="委托方">
+          <InfoItem label="客户">
             {intake.client ? (
               <Link
                 href={`/clients/${intake.client.id}`}
@@ -223,7 +223,7 @@ export default async function IntakeDetailPage({ params }: { params: { id: strin
         </h2>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <Column title="委托方" color="#5B8DEF">
+          <Column title="客户" color="#5B8DEF">
             {intake.client ? (
               <PartyCard
                 name={intake.client.name}
@@ -234,7 +234,7 @@ export default async function IntakeDetailPage({ params }: { params: { id: strin
               <Empty />
             )}
           </Column>
-          <Column title="对方" color="#FB923C">
+          <Column title="相对方" color="#FB923C">
             {opposing.length === 0 ? (
               <Empty />
             ) : (

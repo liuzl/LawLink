@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
 import { assertDocumentWritable } from "@/lib/archive/guard";
-import { matterVisibilityFilter, isManager } from "@/lib/permissions";
+import { matterVisibilityFilter, isManager, assertCanAccessMatter } from "@/lib/permissions";
 import { storage } from "@/lib/storage";
 import { validateUploadedFile } from "@/lib/storage/file-validator";
 import { encryptBuffer, sha256 } from "@/lib/storage/crypto";
@@ -66,6 +66,7 @@ export async function uploadDocument(formData: FormData) {
       select: { id: true, status: true }
     });
     if (!matter) throw new Error("案件不存在");
+    await assertCanAccessMatter(session.user.id, session.user.role, matterId);
 
     if (folderId) {
       const folder = await prisma.documentFolder.findUnique({
@@ -84,10 +85,19 @@ export async function uploadDocument(formData: FormData) {
   if (intakeId) {
     const intake = await prisma.intake.findUnique({
       where: { id: intakeId },
-      select: { id: true, status: true }
+      select: { id: true, status: true, createdById: true, ownerUserId: true, coUserIds: true }
     });
     if (!intake) throw new Error("收案记录不存在");
     if (intake.status === "DECLINED") throw new Error("已拒绝的收案不可上传材料");
+    const uid = session.user.id;
+    if (
+      !isManager(session.user.role) &&
+      intake.createdById !== uid &&
+      intake.ownerUserId !== uid &&
+      !intake.coUserIds.includes(uid)
+    ) {
+      throw new Error("无权向该收案上传材料");
+    }
   }
 
   const raw = Buffer.from(await file.arrayBuffer());
@@ -252,6 +262,8 @@ export async function submitDocumentForReview(id: string) {
   const session = await requireSession();
   const doc = await prisma.document.findUnique({ where: { id, deletedAt: null } });
   if (!doc) throw new Error("材料不存在");
+  if (doc.matterId)
+    await assertCanAccessMatter(session.user.id, session.user.role, doc.matterId);
   if (doc.status !== "DRAFT") throw new Error("只有草稿状态的材料才能提交审核");
 
   await prisma.document.update({
@@ -335,6 +347,8 @@ export async function fileDocument(id: string) {
   const session = await requireSession();
   const doc = await prisma.document.findUnique({ where: { id, deletedAt: null } });
   if (!doc) throw new Error("材料不存在");
+  if (doc.matterId)
+    await assertCanAccessMatter(session.user.id, session.user.role, doc.matterId);
   if (doc.status !== "APPROVED") throw new Error("只有已审批的材料才能归档");
 
   await prisma.document.update({

@@ -1252,8 +1252,14 @@ export function IntakeSheet({
 
             {/* 3. 律师费 */}
             <Section title={kind === "counsel" ? "③ 顾问费" : "③ 律师费"}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {FEE_TYPES.map((t) => (
+              <div
+                className={cn(
+                  "grid grid-cols-1 gap-2",
+                  kind === "counsel" ? "sm:grid-cols-2" : "sm:grid-cols-3"
+                )}
+              >
+                {/* 顾问费不含风险代理 */}
+                {FEE_TYPES.filter((t) => kind !== "counsel" || t !== "CONTINGENCY").map((t) => (
                   <button
                     key={t}
                     type="button"

@@ -2,7 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
-import { matterVisibilityFilter, clientVisibilityFilter } from "@/lib/permissions";
+import {
+  matterVisibilityFilter,
+  clientVisibilityFilter,
+  intakeVisibilityFilter
+} from "@/lib/permissions";
 
 export interface SearchResultItem {
   id: string;
@@ -30,6 +34,7 @@ export async function globalSearch(query: string): Promise<GlobalSearchResult> {
   const role = session.user.role;
   const mVis = matterVisibilityFilter(userId, role);
   const cVis = clientVisibilityFilter(userId, role);
+  const iVis = intakeVisibilityFilter(userId, role);
   const limit = 5;
 
   const [matters, clients, intakes, documents] = await Promise.all([
@@ -56,6 +61,7 @@ export async function globalSearch(query: string): Promise<GlobalSearchResult> {
     prisma.intake.findMany({
       where: {
         status: { not: "CONVERTED" },
+        ...iVis,
         OR: [
           { title: { contains: q, mode: "insensitive" } },
           { client: { name: { contains: q, mode: "insensitive" } } },

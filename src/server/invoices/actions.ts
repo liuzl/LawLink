@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
 import { assertMatterWritable } from "@/lib/archive/guard";
+import { assertCanAccessMatter, assertManagerOrRole } from "@/lib/permissions";
 import { storage } from "@/lib/storage";
 import { validateUploadedFile } from "@/lib/storage/file-validator";
 import { encryptBuffer, sha256 } from "@/lib/storage/crypto";
@@ -70,7 +71,9 @@ export async function createInvoiceRequest(input: z.infer<typeof createSchema>) 
 }
 
 export async function listInvoiceRequests(filter?: { status?: "PENDING" | "ISSUED" | "REJECTED" | "APPROVED" }) {
-  await requireSession();
+  const session = await requireSession();
+  // 全所开票队列：仅财务 / 管理员 / 主任律师可见
+  assertManagerOrRole(session.user.role, "FINANCE");
   const where: Prisma.InvoiceRequestWhereInput = filter?.status
     ? { status: filter.status }
     : {};
@@ -88,7 +91,8 @@ export async function listInvoiceRequests(filter?: { status?: "PENDING" | "ISSUE
 }
 
 export async function listInvoiceRequestsByMatter(matterId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertCanAccessMatter(session.user.id, session.user.role, matterId);
   return prisma.invoiceRequest.findMany({
     where: { matterId },
     orderBy: { requestedAt: "desc" },
