@@ -192,9 +192,9 @@ export function MatterDetailTabs({
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-5 py-3"
+        className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-2"
       >
-        <h1 className="min-w-0 flex-1 truncate text-[1.125rem] font-medium leading-snug">
+        <h1 className="min-w-0 flex-1 truncate text-[0.95rem] font-medium leading-tight">
           {matter.title}
         </h1>
         <MatterStatusPill status={matter.status} />
@@ -424,14 +424,14 @@ export function MatterDetailTabs({
             return (
               <div key={p.id} className="space-y-4">
                 <ProcedureInfoPanel procedure={p} />
-                <ProcedureContent procedure={p} />
-                {/* v0.27: 程序下"案件材料"区，替代原全局案卷材料 tab */}
+                {/* v0.43：案件材料移到「程序基本信息」下、「重要时限/备忘录」之上 */}
                 <ProcedureDocumentsSection
                   matterId={matter.id}
                   procedureId={p.id}
                   documents={procDocs}
                   parties={matter.parties}
                 />
+                <ProcedureContent procedure={p} />
               </div>
             );
           })}
