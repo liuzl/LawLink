@@ -399,6 +399,7 @@ export async function listArchivedMatters() {
           id: true,
           title: true,
           internalCode: true,
+          firmCaseNo: true,
           category: true,
           primaryClient: { select: { name: true } }
         }
@@ -436,6 +437,7 @@ export async function listPendingArchiveRecords() {
           id: true,
           title: true,
           internalCode: true,
+          firmCaseNo: true,
           category: true,
           primaryClient: { select: { name: true } }
         }

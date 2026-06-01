@@ -9,8 +9,7 @@ import {
   ClipboardCheck,
   Archive,
   Settings,
-  BarChart3,
-  ShieldCheck
+  BarChart3
 } from "lucide-react";
 
 export type NavItem = {
@@ -38,6 +37,6 @@ export const primaryNav: NavItem[] = [
 export const secondaryNav: NavItem[] = [
   { label: "归档", href: "/archive", icon: Archive },
   { label: "报表", href: "/reports", icon: BarChart3 },
-  { label: "审计", href: "/audit", icon: ShieldCheck },
+  // v0.43: 「审计」入口移除（审计日志在 设置 → 审计日志）
   { label: "设置", href: "/settings", icon: Settings }
 ];

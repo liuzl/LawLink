@@ -59,6 +59,7 @@ interface PendingRecord {
     id: string;
     title: string;
     internalCode: string;
+    firmCaseNo: string | null;
     category: string;
     primaryClient: { name: string } | null;
   };
@@ -145,7 +146,7 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
                   aria-label="全选"
                 />
               </th>
-              <th className="px-3 py-2 text-left font-normal w-32">归档号</th>
+              <th className="px-3 py-2 text-left font-normal w-32">所内案号</th>
               <th className="px-3 py-2 text-left font-normal">案件</th>
               <th className="px-3 py-2 text-left font-normal w-20">类别</th>
               <th className="px-3 py-2 text-left font-normal w-24">委托方</th>
@@ -167,7 +168,7 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
                   />
                 </td>
                 <td className="px-3 py-2.5 font-mono text-xs text-[#9B7BF7]">
-                  {rec.archiveNo}
+                  {rec.matter.firmCaseNo ?? "—"}
                 </td>
                 <td className="px-3 py-2.5">
                   <Link
@@ -175,9 +176,6 @@ export function PendingArchiveTable({ records }: { records: PendingRecord[] }) {
                     className="hover:text-[#5B8DEF] transition-colors line-clamp-1"
                   >
                     <FileText className="h-3 w-3 inline mr-1 text-muted-foreground" />
-                    <span className="font-mono text-xs text-muted-foreground mr-2">
-                      {rec.matter.internalCode}
-                    </span>
                     {rec.matter.title}
                   </Link>
                 </td>

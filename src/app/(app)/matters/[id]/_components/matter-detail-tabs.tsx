@@ -310,15 +310,18 @@ export function MatterDetailTabs({
 
           <div className="flex-1" />
 
-          <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
-            <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} />
-            沟通
-            {notes.length > 0 && (
-              <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
-                {notes.length}
-              </span>
-            )}
-          </TabButton>
+          {/* v0.43: 「沟通」tab 暂时隐藏（NotesPanel 代码保留，去掉 false 即恢复） */}
+          {false && (
+            <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
+              <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} />
+              沟通
+              {notes.length > 0 && (
+                <span className="ml-1 font-mono text-[10px] tabular text-muted-foreground">
+                  {notes.length}
+                </span>
+              )}
+            </TabButton>
+          )}
 
           <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
             <Clock className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -395,7 +398,8 @@ export function MatterDetailTabs({
               defaultCauseName={matter.cause?.name ?? null}
             />
           )}
-          {tab === "notes" && <NotesPanel matterId={matter.id} notes={notes} />}
+          {/* v0.43: 沟通 tab 隐藏 */}
+          {false && tab === "notes" && <NotesPanel matterId={matter.id} notes={notes} />}
           {tab === "timeline" && <TimelinePanel events={matter.timelineEvents} />}
 
           {engagedProcedures.map((p) => {
