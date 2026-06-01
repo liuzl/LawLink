@@ -228,6 +228,107 @@ export async function runConflictCheck(queries: QueryItem[]): Promise<ConflictCh
         });
       }
     }
+
+    // ============ v0.43: 客户档案 → 关联案件 检索（修复漏报）============
+    // 老案件常只在 Matter.primaryClient / clientLinks 记客户、Party 表为空，
+    // 上面的 Party 检索会漏掉。客户作为某案件的「委托方(CLIENT_PARTY)」是真实
+    // 冲突信号，故按名称/证件号查 Client，再回溯其关联 Matter 产出命中。
+    // 不滤 status（已归档/进行中都要提示）；孤立客户档案（无任何关联案件）不产出命中。
+    const clientWhere: Prisma.ClientWhereInput[] = [];
+    if (name) clientWhere.push({ name });
+    if (idNumber) clientWhere.push({ idNumber });
+    if (name && name.length >= 3) clientWhere.push({ name: { contains: name, mode: "insensitive" } });
+
+    if (clientWhere.length > 0) {
+      const matterSelect = {
+        id: true,
+        internalCode: true,
+        title: true,
+        cause: { select: { name: true } },
+        causeFreeText: true,
+        owner: { select: { name: true } }
+      } as const;
+
+      const clients = await prisma.client.findMany({
+        where: { deletedAt: null, OR: clientWhere },
+        select: {
+          id: true,
+          name: true,
+          idNumber: true,
+          matters: { where: { deletedAt: null }, select: matterSelect },
+          matterLinks: {
+            where: { matter: { deletedAt: null } },
+            select: { matter: { select: matterSelect } }
+          }
+        }
+      });
+
+      for (const c of clients) {
+        // 该客户关联的全部案件（primaryClient + clientLinks），按 id 去重
+        const matters = [...c.matters, ...c.matterLinks.map((l) => l.matter)].filter(
+          (m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
+        );
+
+        const idHit = !!(idNumber && c.idNumber && c.idNumber === idNumber);
+        const nameExact = !!(name && c.name === name);
+        const nameFuzzy = !!(name && !nameExact && name.length >= 3);
+
+        for (const m of matters) {
+          const matterInfo: MatterInfoForHit = {
+            matterId: m.id,
+            internalCode: m.internalCode,
+            title: m.title,
+            causeText: m.cause?.name ?? m.causeFreeText ?? null,
+            ownerName: m.owner?.name ?? null,
+            partyRole: "CLIENT_PARTY",
+            partyStanding: null
+          };
+
+          if (idHit) {
+            const sev = bumpSeverity(pickSeverity(q.role, "CLIENT_PARTY"));
+            hits.push({
+              hitType: "HISTORICAL_PARTY",
+              targetType: "Matter",
+              targetId: m.id,
+              matchedName: c.name,
+              matchedField: "idNumber",
+              matchedValue: idNumber!,
+              matchedRatio: 1,
+              severity: sev,
+              reason: `身份证 / 信用代码与案件「${m.internalCode}」的委托方「${c.name}」一致`,
+              matterInfo
+            });
+          }
+          if (nameExact) {
+            hits.push({
+              hitType: "HISTORICAL_PARTY",
+              targetType: "Matter",
+              targetId: m.id,
+              matchedName: c.name,
+              matchedField: "name",
+              matchedValue: name,
+              matchedRatio: 1,
+              severity: pickSeverity(q.role, "CLIENT_PARTY"),
+              reason: `与案件「${m.internalCode}」的委托方「${c.name}」同名`,
+              matterInfo
+            });
+          } else if (nameFuzzy) {
+            hits.push({
+              hitType: "HISTORICAL_PARTY",
+              targetType: "Matter",
+              targetId: m.id,
+              matchedName: c.name,
+              matchedField: "name",
+              matchedValue: name,
+              matchedRatio: name.length / c.name.length,
+              severity: "LOW",
+              reason: `与案件「${m.internalCode}」的委托方「${c.name}」名称相似`,
+              matterInfo
+            });
+          }
+        }
+      }
+    }
   }
 
   // 去重：同一 (targetId,matchedField,matchedValue) 保留最高严重度
