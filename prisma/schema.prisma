@@ -532,6 +532,7 @@ model Intake {
 model Matter {
   id           String         @id @default(cuid())
   internalCode String         @unique
+  firmCaseNo   String?        @unique // v0.42 所内案号（按可配置模板生成）
   title        String
   category     MatterCategory @default(CIVIL_COMMERCIAL)
   status       MatterStatus   @default(IN_PROGRESS)

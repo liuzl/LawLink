@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { matterCategoryLabel, matterStatusLabel, matterCategoryKind } from "@/lib/enums";
+import { matterCategoryLabel, matterCategoryKind } from "@/lib/enums";
 import { formatDate, cn } from "@/lib/utils";
 import type { MatterPayload, UserOption, FinancePayload } from "./matter-detail-tabs";
 import { TeamEditorDialog } from "./team-editor-dialog";
@@ -123,10 +123,11 @@ export function InfoPanel({
     if (!s && !e) return "—";
     return `${s ? formatDate(s) : "—"} ~ ${e ? formatDate(e) : "—"}`;
   };
-  const statusChip = (
-    <span className="inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-0 text-[11px] text-primary">
-      {matterStatusLabel[matter.status]}
-    </span>
+  // v0.42 项11：案件信息表展示「所内案号」（状态已在页头 Pill 体现）
+  const firmCaseNoCell = matter.firmCaseNo ? (
+    <span className="font-mono tabular text-[12px]">{matter.firmCaseNo}</span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
   );
   const claimCell = matter.claimAmount ? (
     <span className="font-mono tabular">¥{Number(matter.claimAmount).toLocaleString()}</span>
@@ -172,7 +173,7 @@ export function InfoPanel({
               <Pair label="案由">{matter.cause?.name ?? matter.causeFreeText ?? "—"}</Pair>
               <Pair label="标的">{claimCell}</Pair>
               <Pair label="是否反诉">{counterclaim ? "是" : "否"}</Pair>
-              <Pair label="案件状态">{statusChip}</Pair>
+              <Pair label="所内案号">{firmCaseNoCell}</Pair>
             </InfoRow>
           )}
           {kind === "project" && (
@@ -181,7 +182,7 @@ export function InfoPanel({
                 <Pair label="业务类型">{matter.businessType || "—"}</Pair>
                 <Pair label="项目金额">{claimCell}</Pair>
                 <Pair label="起止时间">{period(matter.serviceStart, matter.serviceEnd)}</Pair>
-                <Pair label="案件状态">{statusChip}</Pair>
+                <Pair label="所内案号">{firmCaseNoCell}</Pair>
               </InfoRow>
               <InfoRow>
                 <Pair label="服务范围" grow>
@@ -196,7 +197,7 @@ export function InfoPanel({
               <InfoRow>
                 <Pair label="顾问类型">{matter.counselType || "—"}</Pair>
                 <Pair label="顾问期限">{period(matter.serviceStart, matter.serviceEnd)}</Pair>
-                <Pair label="案件状态">{statusChip}</Pair>
+                <Pair label="所内案号">{firmCaseNoCell}</Pair>
               </InfoRow>
               <InfoRow>
                 <Pair label="服务范围" grow>

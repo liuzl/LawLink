@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/auth/session";
 import { audit } from "@/server/audit";
 import { assertMatterWritable } from "@/lib/archive/guard";
 import { matterVisibilityFilter, assertCanAccessMatter } from "@/lib/permissions";
-import { generateInternalCode } from "./code-generator";
+import { generateInternalCode, generateFirmCaseNo } from "./code-generator";
 import { seedDefaultFolders } from "@/lib/default-folders";
 import {
   matterCreateSchema,
@@ -280,12 +280,14 @@ export async function createMatter(input: MatterCreateInput) {
   const data = matterCreateSchema.parse(input);
 
   const internalCode = await generateInternalCode(data.category);
+  const firmCaseNo = await generateFirmCaseNo(data.category);
   const [primaryClientId, ...otherClientIds] = data.clientIds;
 
   const created = await prisma.$transaction(async (tx) => {
     const matter = await tx.matter.create({
       data: {
         internalCode,
+        firmCaseNo,
         title: data.title,
         category: data.category,
         ownerId: session.user.id,

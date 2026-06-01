@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings, Users, Layers, ScrollText, KeyRound, Sparkles, Package, ListChecks, BellRing } from "lucide-react";
+import { Settings, Users, Layers, ScrollText, KeyRound, Sparkles, Package, ListChecks, BellRing, Building2 } from "lucide-react";
 import { getSession } from "@/lib/auth/session";
 
 export default async function SettingsLayout({
@@ -39,6 +39,12 @@ export default async function SettingsLayout({
             )}
             {isAdmin && (
               <>
+                <SettingsNavLink
+                  href="/settings/firm-profile"
+                  icon={<Building2 className="h-3.5 w-3.5" />}
+                >
+                  律所信息
+                </SettingsNavLink>
                 <SettingsNavLink
                   href="/settings/users"
                   icon={<Users className="h-3.5 w-3.5" />}

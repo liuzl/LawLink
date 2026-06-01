@@ -6,17 +6,24 @@ import { Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { primaryNav, secondaryNav, type NavItem } from "./nav-config";
 
+/** v0.42 项1: 侧栏品牌（可在设置 → 律所信息配置） */
+export type FirmBrand = {
+  name: string;
+  subtitle: string;
+  logoDataUrl: string | null;
+};
+
 /** 桌面侧边栏（md 以上显示） */
-export function Sidebar() {
+export function Sidebar({ firm }: { firm: FirmBrand }) {
   return (
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-60 flex-col border-r border-border bg-sidebar md:flex">
-      <NavContent />
+      <NavContent firm={firm} />
     </aside>
   );
 }
 
 /** 导航内容 — 桌面侧边栏和移动 Sheet 共用 */
-export function NavContent() {
+export function NavContent({ firm }: { firm: FirmBrand }) {
   const pathname = usePathname();
 
   return (
@@ -26,12 +33,23 @@ export function NavContent() {
         className="flex h-14 items-center gap-2.5 px-5 transition-colors hover:bg-muted/50"
         aria-label="返回仪表盘"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Scale className="h-4 w-4" strokeWidth={1.8} />
-        </div>
-        <div className="flex flex-col leading-tight">
-          <span className="text-[1.05rem] font-semibold tracking-tight">LawLink</span>
-          <span className="text-[10px] text-muted-foreground">律师工作台</span>
+        {firm.logoDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={firm.logoDataUrl}
+            alt={firm.name}
+            className="h-8 w-8 shrink-0 rounded-md object-contain"
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Scale className="h-4 w-4" strokeWidth={1.8} />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-[1.05rem] font-semibold tracking-tight">{firm.name}</span>
+          {firm.subtitle ? (
+            <span className="truncate text-[10px] text-muted-foreground">{firm.subtitle}</span>
+          ) : null}
         </div>
       </Link>
 

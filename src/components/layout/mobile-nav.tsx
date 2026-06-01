@@ -6,9 +6,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { NavContent } from "./sidebar";
+import { NavContent, type FirmBrand } from "./sidebar";
 
-export function MobileNav({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function MobileNav({
+  open,
+  onOpenChange,
+  firm
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  firm: FirmBrand;
+}) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-60 p-0">
@@ -16,7 +24,7 @@ export function MobileNav({ open, onOpenChange }: { open: boolean; onOpenChange:
           <SheetTitle>导航菜单</SheetTitle>
         </SheetHeader>
         <div className="h-full" onClick={() => onOpenChange(false)}>
-          <NavContent />
+          <NavContent firm={firm} />
         </div>
       </SheetContent>
     </Sheet>

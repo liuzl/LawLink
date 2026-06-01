@@ -404,8 +404,9 @@ export async function convertIntakeToMatter(intakeId: string) {
   if (!intake) throw new Error("Intake 不存在");
   if (intake.status === "CONVERTED") throw new Error("此 Intake 已转化");
 
-  const { generateInternalCode } = await import("@/server/matters/code-generator");
+  const { generateInternalCode, generateFirmCaseNo } = await import("@/server/matters/code-generator");
   const internalCode = await generateInternalCode(intake.category);
+  const firmCaseNo = await generateFirmCaseNo(intake.category);
 
   // 首程序类型：优先用 intake 选的，缺失按案件类别推断
   const firstProcedureType =
@@ -422,6 +423,7 @@ export async function convertIntakeToMatter(intakeId: string) {
     const m = await tx.matter.create({
       data: {
         internalCode,
+        firmCaseNo,
         title: intake.title,
         category: intake.category,
         ownerId,
