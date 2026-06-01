@@ -866,7 +866,7 @@ export function IntakeSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] w-[94vw] max-w-[1180px] flex-col gap-0 overflow-hidden border-border bg-background p-0 shadow-2xl">
+      <DialogContent className="flex max-h-[92vh] w-[92vw] max-w-[1040px] flex-col gap-0 overflow-hidden border-border bg-background p-0 shadow-2xl">
         <DialogHeader className="border-b border-border bg-card px-6 py-4">
           <div className="flex items-start justify-between gap-4 pr-8">
             <div className="space-y-1">
