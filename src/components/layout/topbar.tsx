@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +56,7 @@ const APP_ITEMS = [
   { label: "通讯录", href: "/contacts", icon: Contact, kind: "link" }
 ] as const;
 
-export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
+export function Topbar({ onMobileMenuToggle, userAvatar }: { onMobileMenuToggle?: () => void; userAvatar?: string | null }) {
   const { data: session } = useSession();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -174,6 +174,7 @@ export function Topbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
             )}
           >
             <Avatar className="h-6 w-6">
+              {userAvatar ? <AvatarImage src={userAvatar} alt={displayName} /> : null}
               <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
                 {initial}
               </AvatarFallback>

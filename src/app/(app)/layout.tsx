@@ -3,6 +3,7 @@ import { AnnouncementBanner } from "@/components/layout/announcement-banner";
 import { listActiveBanners } from "@/server/announcements/actions";
 import { getSession } from "@/lib/auth/session";
 import { getFirmProfile } from "@/server/settings/firm-profile";
+import { prisma } from "@/lib/prisma";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // v0.27: 顶部公告 banner —— 仅登录后获取，未登录走 (auth) 段不走此 layout
@@ -17,9 +18,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     logoDataUrl: profile.logoDataUrl
   };
 
+  // v0.43：当前用户头像（从 DB 读最新，避免 JWT 缓存），供顶栏即时刷新
+  const me = session?.user
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { avatar: true }
+      })
+    : null;
+
   return (
     <AppShell
       firm={firm}
+      userAvatar={me?.avatar ?? null}
       banner={banners.length > 0 ? <AnnouncementBanner banners={banners} /> : null}
     >
       {children}

@@ -212,3 +212,35 @@ export async function changeMyPassword(input: ChangeMyPasswordInput) {
 
   return { ok: true };
 }
+
+/** v0.43：保存 / 清除个人头像（base64 data URL 内联存 User.avatar，约 256KB 上限） */
+const AVATAR_MAX_CHARS = 256 * 1024;
+export async function saveMyAvatar(input: { avatar: string | null }) {
+  const session = await requireSession();
+  let avatar = input.avatar;
+  if (typeof avatar === "string" && avatar.length > 0) {
+    if (!/^data:image\/(png|jpeg|jpg|webp|svg\+xml);base64,/.test(avatar)) {
+      throw new Error("头像必须是 PNG / JPG / WebP / SVG 图片");
+    }
+    if (avatar.length > AVATAR_MAX_CHARS) {
+      throw new Error("头像体积过大，请控制在约 180KB 以内");
+    }
+  } else {
+    avatar = null;
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { avatar }
+  });
+
+  await audit({
+    userId: session.user.id,
+    action: "USER_AVATAR_UPDATE",
+    targetType: "User",
+    targetId: session.user.id
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
