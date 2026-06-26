@@ -204,4 +204,50 @@ Web / CLI / MCP **都是薄壳**，只负责：解析输入 → 组装 `authCont
 
 ---
 
+## 9. P0 技术栈选型（已定板）
+
+> 决策日期记录：栈已拍板，作为 P1 起的实施基线。选型取向：**Cloudflare 原生、轻量、核心层与框架解耦**。
+
+### 9.1 已锁定的栈
+
+| 层 | 选定 | 备注 |
+|---|---|---|
+| 语言 / 运行时 | **TypeScript**（本地 Node / 云端 Workers `nodejs_compat`） | CLI 直接 `import` 核心层，零 IPC |
+| 仓库形态 | **pnpm monorepo**（可选 Turborepo） | 结构见 §9.2 |
+| 数据访问 | **Drizzle ORM** + drizzle-kit | 本地 better-sqlite3 / libSQL；云端 D1 binding。D1 一等支持、Workers 冷启友好、bundle 小 |
+| 校验 | **Zod** | 随核心层走，框架无关 |
+| API 层 | **Hono** | Workers 原生薄壳：request → 组 authContext → 调 core → JSON |
+| Web UI | **Vite + React SPA** | 复用现有 React 组件（剥 server-action 耦合，改打 api）；路由 TanStack/React Router |
+| CLI | TypeScript + commander/clipanion | 直接 import core；默认 JSON 输出；Skills=markdown（按 §4.5） |
+| 鉴权 | **Hono 中间件 + JWT（jose）+ bcryptjs** | 替代 next-auth（见 §9.3 后果 1） |
+| 存储 | local FS / R2（复用现有抽象） | 接 R2 几乎免费 |
+| 调度 | node-cron（本地）/ Cron Triggers（CF） | |
+| 部署 | Wrangler（api + cron）+ SPA 静态托管 | 本地 = node + sqlite 文件，**无 Docker** |
+| 测试 | Vitest（沿用） | |
+
+### 9.2 monorepo 结构
+
+```
+packages/
+  core/   领域层（= DOMAIN-SPEC）；纯函数 (deps, authContext, input) → data
+  db/     Drizzle schema + DB 适配（SQLite 本地 / D1 云端）
+  cli/    agent-native CLI + Skills（薄壳，import core）
+  mcp/    （可选，后置）MCP 薄壳
+apps/
+  api/    Hono HTTP API（Workers，薄壳）
+  web/    Vite + React SPA（复用现有组件，打 api）
+```
+
+### 9.3 两个连带后果（选型引出，须纳入 P0/P1 范围）
+
+1. **丢 Next.js = 丢 next-auth**：需新写轻量鉴权——Hono 中间件 + JWT（jose，Workers 友好）+ bcryptjs（沿用密码哈希）。Web 与 CLI 都从中取得 `authContext`。
+2. **Drizzle 取代 Prisma**：[`SQLITE_D1_MIGRATION.md`](./SQLITE_D1_MIGRATION.md) 的**分析结论仍有效**（枚举/数组/Json 的 SQLite 限制一致，哪些字段拆关联表/转 JSON 的判断不变），仅**实现机制变**：枚举 → text + TS 联合类型；标量数组 → JSON text 列或 Drizzle 关联表（§B1 被查询的仍建议关联表）；Decimal → text（金额运算在核心层做）。
+
+### 9.4 未锁定（按计划推后）
+- CLI 具体库（commander vs clipanion）→ P4 定。
+- 是否引入 Turborepo（vs 纯 pnpm workspaces）→ 视构建复杂度，P1 起视情况。
+- 见 §8 其余开放项（CF 运行时 spike、D1 配额等）仍待验证。
+
+---
+
 *本方案基于 LawLink（叶森 / Sen Ye，MIT）整理，遵循 MIT 协议。CLI/Skills 设计参考 larksuite/cli（MIT）。*
