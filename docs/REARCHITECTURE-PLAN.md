@@ -132,6 +132,26 @@
 ### 4.4 三个壳与核心层的关系
 Web / CLI / MCP **都是薄壳**，只负责：解析输入 → 组装 `authContext` → 调核心层用例 → 格式化输出。**业务逻辑零重复**。这正是 CLI 不沦为附属品、而成为 agent-native 一等接口的前提。
 
+### 4.5 可借鉴的 larksuite/cli 设计理念（P4 实施清单）
+
+> 做 CLI 时**重点参考 [larksuite/cli](https://github.com/larksuite/cli) 的设计理念**。下列为提炼出的可落地原则，逐条对照实现：
+
+1. **Agent-Native Design**：每个命令都用真实 agent 跑测，以"提高 agent 调用成功率"为目标——精简参数、智能默认、结构化输出。命令设计先问"agent 调得动吗"。
+2. **一个接口同时服务人与 agent**：不分叉成两套工具；同一 CLI，人在终端用、agent 也用、脚本/CI 也用。
+3. **分层命令粒度**：lark 用三层（Shortcuts → API Commands → Raw API）；LawLink 取两层（快捷 + 结构化），按需可加 Raw 层。让调用方按场景选粒度。
+4. **Skills = 渐进披露**：每个域一个 `SKILL.md`（YAML frontmatter：name/version/description/requires/cliHelp）+ `references/` 子文档。要点：
+   - **用决策表/路由表**（scenario → action）而非线性步骤；
+   - **前置门**（用某能力前必须先读某 reference）；
+   - **概念消歧**（如"案件 vs 程序""日历 vs 日程"这类易混概念先讲清）；
+   - **按需加载**（agent 用到哪个域才读哪个 md，省 context）。
+   - LawLink 的 Skills 内容直接以 `DOMAIN-SPEC.md` 各业务流程为种子。
+5. **结构化输出为默认**：`--format json` 默认（agent），另备 `table`（人）、`ndjson`/`csv`（批处理）。
+6. **agent 友好认证**：非阻塞登录（device-code 思路），便于无人值守 agent。
+7. **安全是 agent 场景的硬约束**：输入注入防护、终端输出净化、凭据存 OS keychain、危险操作 `--dry-run` 预览 + 二次确认。
+8. **智能默认 + 预览**：尽量减少必填参数、给出合理默认；变更类操作先 dry-run 预览再执行。
+
+> 一句话理念：**把"能不能被 agent 一次调对"当作 CLI 的一等设计目标**，而不是先给人做完再让 agent 凑合。
+
 ---
 
 ## 5. 数据库与运行时目标
@@ -153,7 +173,7 @@ Web / CLI / MCP **都是薄壳**，只负责：解析输入 → 组装 `authCont
 | **P1 核心层** | 按 DOMAIN-SPEC 从 51 个 server 文件剥业务逻辑，去 session 耦合 → `(deps, authContext, input)` 纯用例 + 单测 | 框架无关 core（大头） |
 | **P2 DB/存储/调度 适配器** | SQLite 兼容 schema（按 SQLITE_D1_MIGRATION）+ 存储抽象复用 + 调度抽象 | 本地可跑、可换 D1/R2 |
 | **P3 Web 薄壳** | 现 Web 改为调核心层；UI 组件大量复用 | UI 站在 core 上 |
-| **P4 CLI + Skills** | 两层命令 + JSON 输出 + 安全；Skills（DOMAIN-SPEC 为种子） | agent-native 接口 |
+| **P4 CLI + Skills** | 两层命令 + JSON 输出 + 安全；Skills（DOMAIN-SPEC 为种子）；**重点参考 larksuite/cli 设计理念，按 §4.5 清单实现** | agent-native 接口 |
 | **P5 Cloudflare 落地** | D1 adapter + R2 + Cron Triggers + OpenNext；移除 canvas、验证 crypto | CF 优先部署 |
 | **P6（可选）MCP 薄壳** | 包同一 core，给 MCP-native 宿主 | 可选 |
 | **P7 补强规则** | 落 DOMAIN-SPEC §9：期限自动推算、保全到期预警、冲突召回增强、脱敏、风险代理/计时、归档 override | 从"记录"升级为"风控" |
