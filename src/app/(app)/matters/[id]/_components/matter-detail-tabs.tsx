@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import type { ClientType, Prisma } from "@prisma/client";
 import {
-  Info,
   Plus,
   Pencil,
   X
@@ -125,10 +124,6 @@ export function MatterDetailTabs({
   userOptions,
   documents,
   intakeContracts,
-  folders,
-  folderDocuments,
-  templates,
-  preservations,
   colleagues,
   currentUserRole,
   canAssociateThisMatter,

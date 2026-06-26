@@ -101,7 +101,6 @@ async function assertCanAccessPreservation(userId: string, id: string) {
 // 用于 dashboard 预警
 export async function listExpiringPreservations(daysAhead = 60) {
   const session = await requireSession();
-  const now = new Date();
   const end = new Date();
   end.setDate(end.getDate() + daysAhead);
 

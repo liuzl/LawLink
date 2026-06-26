@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Plus, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import type {
   PartyRole,
   PartyType,

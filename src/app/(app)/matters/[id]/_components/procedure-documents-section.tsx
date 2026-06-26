@@ -204,13 +204,6 @@ export function ProcedureDocumentsSection({
     [documents, filter]
   );
 
-  // 各类别计数（给 tab 显示）
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const d of documents) c[d.category] = (c[d.category] ?? 0) + 1;
-    return c;
-  }, [documents]);
-
   function handleSubmit() {
     if (!picked) {
       toast.error("请先选择文件");

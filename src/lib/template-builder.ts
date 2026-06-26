@@ -62,13 +62,6 @@ function title(text: string): Paragraph {
   });
 }
 
-function subtitle(text: string): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 80, after: 200 },
-    children: [new TextRun({ text, font: FONT_TITLE, size: 28, bold: true })]
-  });
-}
 
 function body(text: string, opts?: { indent?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; bold?: boolean }): Paragraph {
   return new Paragraph({
