@@ -4,7 +4,7 @@ import { useTransition, useRef, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Loader2, Upload, ScanText } from "lucide-react";
+import { Loader2, ScanText } from "lucide-react";
 import type { MatterCategory, ProcedureType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,10 +40,7 @@ import {
 } from "@/server/procedures/actions";
 import { parseSummons } from "@/server/ai/parse-summons";
 import { procedureTypeLabel } from "@/lib/enums";
-import {
-  proceduresByCategory,
-  suggestHandlingAgency
-} from "@/lib/procedures-by-category";
+import { proceduresByCategory } from "@/lib/procedures-by-category";
 import { agencyOptions } from "@/lib/china-regions";
 import { JurisdictionSelect } from "@/app/(app)/intakes/_components/jurisdiction-select";
 import { cn } from "@/lib/utils";
@@ -478,8 +475,6 @@ export function AddHearingDialog({
       notes: ""
     }
   });
-
-  const procedureId = watch("procedureId");
 
   const CN_NUM: Record<number, string> = { 1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八", 9: "九", 10: "十" };
 

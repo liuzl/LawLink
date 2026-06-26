@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Shield, Plus, Search, ChevronDown, ChevronRight,
-  Pencil, RotateCw, Trash2, UserPlus, Landmark
+  Pencil, Trash2, UserPlus, Landmark
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -149,7 +148,7 @@ function KpiCard({ label, value, tone }: { label: string; value: string | number
 }
 
 function CaseCard({ caseData: cs, expanded, onToggle, matters, users }: { caseData: PreservationCaseRow; expanded: boolean; onToggle: () => void; matters: MatterOption[]; users: UserOption[] }) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [addTargetOpen, setAddTargetOpen] = useState(false);
   const [addPropOpen, setAddPropOpen] = useState<string | null>(null);
   const [renewPropOpen, setRenewPropOpen] = useState<string | null>(null);
@@ -176,7 +175,7 @@ function CaseCard({ caseData: cs, expanded, onToggle, matters, users }: { caseDa
         </div>
         <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <button type="button" onClick={() => setEditOpen(true)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => { if (confirm("确认删除此保全案件及所有记录？")) { startTransition(async () => { try { await deletePreservationCase({ id: cs.id }); toast.success("已删除"); } catch (e) { toast.error("删除失败"); } }); } }} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => { if (confirm("确认删除此保全案件及所有记录？")) { startTransition(async () => { try { await deletePreservationCase({ id: cs.id }); toast.success("已删除"); } catch { toast.error("删除失败"); } }); } }} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       </button>
 

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   Plus,
-  Trash2,
   Paperclip,
   FileText,
   X,
